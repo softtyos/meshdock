@@ -65,6 +65,7 @@ export * from "./services/ssh-key";
 export * from "./services/transfer";
 export * from "./services/user";
 export * from "./services/vault-provider";
+export * from "./services/vitals";
 export * from "./services/volume-backups";
 export * from "./services/web-server-settings";
 export * from "./setup/config-paths";

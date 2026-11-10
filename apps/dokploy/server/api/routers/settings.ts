@@ -653,7 +653,21 @@ export const settingsRouter = createTRPCRouter({
 			const shouldUpdate = input?.force || data.updateAvailable;
 
 			if (shouldUpdate) {
-				const baseImage = process.env.DOKPLOY_IMAGE || "softtynet/dokploy";
+				let baseImage = process.env.DOKPLOY_IMAGE;
+				if (!baseImage) {
+					try {
+						const { stdout } = await execAsync(
+							"docker service inspect dokploy --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'",
+						);
+						const runningImg = stdout.trim();
+						if (runningImg) {
+							baseImage = runningImg.split(":")[0]?.split("@")[0] || "softtynet/dokploy";
+						}
+					} catch {
+						baseImage = "softtynet/dokploy";
+					}
+				}
+				if (!baseImage) baseImage = "softtynet/dokploy";
 				const targetTag = input?.imageTag || data.latestVersion || "latest";
 				const targetImage = `${baseImage}:${targetTag}`;
 

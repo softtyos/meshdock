@@ -11,6 +11,7 @@ import {
 	Server,
 } from "lucide-react";
 import type { GetServerSidePropsContext } from "next";
+import Link from "next/link";
 import React, { type ReactElement, useState } from "react";
 import superjson from "superjson";
 import { HandleServers } from "@/components/dashboard/settings/servers/handle-servers";
@@ -70,6 +71,12 @@ const FleetPage = () => {
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">
+					<Link href="/dashboard/monitoring">
+						<Button variant="outline" size="sm" className="gap-1.5 h-9">
+							<Activity className="h-3.5 w-3.5 text-emerald-500" />
+							<span>System Vitals</span>
+						</Button>
+					</Link>
 					<SwarmGlobalAgentModal />
 					<HandleServers />
 					<Button

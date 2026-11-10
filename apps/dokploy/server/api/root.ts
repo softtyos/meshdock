@@ -59,6 +59,7 @@ import { telemetryProviderRouter } from "./routers/telemetry-provider";
 import { transferRouter } from "./routers/transfer";
 import { userRouter } from "./routers/user";
 import { vaultProviderRouter } from "./routers/vault-provider";
+import { vitalsRouter } from "./routers/vitals";
 import { volumeBackupsRouter } from "./routers/volume-backups";
 /**
  * This is the primary router for your server.
@@ -128,6 +129,7 @@ export const appRouter = createTRPCRouter({
 	patch: patchRouter,
 	overview: overviewRouter,
 	transfer: transferRouter,
+	vitals: vitalsRouter,
 });
 
 // export type definition of API

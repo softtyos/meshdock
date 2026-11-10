@@ -202,14 +202,13 @@ const MENU: Menu = {
 		},
 		{
 			isSingle: true,
-			title: "Monitoring",
+			title: "System Vitals",
 			url: "/dashboard/monitoring",
-			icon: BarChartHorizontalBigIcon,
-			// Only enabled in non-cloud environments (product decision) and if user has monitoring.read and docker.read
+			icon: Activity,
+			// Enabled in non-cloud environments if user has monitoring.read or docker.read
 			isEnabled: ({ isCloud, permissions }) =>
 				!isCloud &&
-				!!permissions?.monitoring.read &&
-				!!permissions?.docker.read,
+				(!!permissions?.monitoring.read || !!permissions?.docker.read),
 		},
 		{
 			isSingle: true,

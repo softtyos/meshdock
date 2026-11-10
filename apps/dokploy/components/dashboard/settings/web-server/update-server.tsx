@@ -167,14 +167,14 @@ export const UpdateServer = ({
 				{/* Update available state */}
 				{isUpdateAvailable && latestVersion && (
 					<div className="mb-8">
-						<div className="inline-flex items-center gap-2 rounded-lg px-3 py-2 border border-emerald-900 bg-emerald-900 dark:bg-emerald-900/40 mb-4 w-full">
+						<div className="inline-flex items-center gap-2 rounded-lg px-3 py-2 border border-emerald-500/30 bg-emerald-500/10 mb-4 w-full">
 							<div className="flex items-center gap-1.5">
-								<Download className="h-4 w-4 text-emerald-400" />
-								<span className="text font-medium text-emerald-400 ">
+								<Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+								<span className="text font-medium text-emerald-600 dark:text-emerald-400">
 									New version available:
 								</span>
 							</div>
-							<span className="text font-semibold text-emerald-300">
+							<span className="text font-semibold text-emerald-700 dark:text-emerald-300">
 								{latestVersion}
 							</span>
 						</div>
@@ -207,8 +207,8 @@ export const UpdateServer = ({
 				{hasCheckedUpdate && !isUpdateAvailable && !isPending && (
 					<div className="mb-8">
 						<div className="flex flex-col items-center gap-6 mb-6">
-							<div className="rounded-full p-4 bg-emerald-400/40">
-								<Sparkles className="h-8 w-8 text-emerald-400" />
+							<div className="rounded-full p-4 bg-emerald-500/15 border border-emerald-500/20">
+								<Sparkles className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
 							</div>
 							<div className="text-center space-y-2">
 								<h3 className="text-lg font-medium">

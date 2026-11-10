@@ -20,7 +20,7 @@ detect_version() {
         
         # Try to get latest release from GitHub by following redirects
         version=$(curl -fsSL --connect-timeout 10 -o /dev/null -w '%{url_effective}\n' \
-            https://github.com/dokploy/dokploy/releases/latest 2>/dev/null | \
+            https://github.com/softtyos/meshdock/releases/latest 2>/dev/null | \
             sed 's#.*/tag/##')
 
         # When the request fails (unreachable network, rate limit), curl still
@@ -375,7 +375,7 @@ install_dokploy() {
     private_ip=$(get_private_ip)
     formatted_addr=$(format_ip_for_url "$public_ip")
     echo ""
-    printf "${GREEN}Congratulations, Dokploy is installed!${NC}\n"
+    printf "${GREEN}Congratulations, Meshdock is installed!${NC}\n"
     printf "${BLUE}Wait 15 seconds for the server to start${NC}\n"
     printf "${YELLOW}Please go to http://${formatted_addr}:3000${NC}\n"
     # Home servers and local VMs are often not reachable on their public IP
@@ -391,15 +391,15 @@ update_dokploy() {
     VERSION_TAG=$(detect_version)
     DOCKER_IMAGE="softtynet/dokploy:latest"
 
-    echo "Updating Dokploy to version: ${VERSION_TAG}"
+    echo "Updating Meshdock to version: ${VERSION_TAG}"
 
     # Pull the image
     docker pull $DOCKER_IMAGE
 
     # Update the service
-    docker service update --image $DOCKER_IMAGE dokploy
+    docker service update --update-order stop-first --force --image $DOCKER_IMAGE dokploy
 
-    echo "Dokploy has been updated to version: ${VERSION_TAG}"
+    echo "Meshdock has been updated to version: ${VERSION_TAG}"
 }
 
 # Main script execution
