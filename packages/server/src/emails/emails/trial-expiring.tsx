@@ -30,7 +30,7 @@ export const TrialExpiringEmail = ({
 	planName = "Hobby",
 	daysRemaining = 3,
 	endsOn = "2024-01-01",
-	billingUrl = "https://app.dokploy.com/dashboard/settings/billing",
+	billingUrl = "https://app.softty.net/dashboard/settings/billing",
 }: TemplateProps) => {
 	const dayLabel = daysRemaining === 1 ? "day" : "days";
 	const previewText =
@@ -47,7 +47,7 @@ export const TrialExpiringEmail = ({
 					<Container className="my-[40px] mx-auto max-w-[520px]">
 						<Section className="bg-[#09090b] rounded-t-xl px-[40px] py-[32px] text-center">
 							<Img
-								src="https://raw.githubusercontent.com/Dokploy/website/refs/heads/main/apps/docs/public/logo-dokploy-blackpng.png"
+								src="https://raw.githubusercontent.com/softtyos/meshdock/refs/heads/dev/apps/dokploy/logo.png"
 								width="190"
 								height="120"
 								alt="Dokploy"
@@ -115,15 +115,15 @@ export const TrialExpiringEmail = ({
 							<Text className="text-[#a1a1aa] text-[12px] leading-[18px] m-0">
 								This is an automated email from{" "}
 								<Link
-									href="https://dokploy.com"
+									href="https://www.softty.net"
 									className="text-[#71717a] underline"
 								>
-									Dokploy Cloud
+									Meshdock Cloud
 								</Link>
 								. If you have any questions about your billing, please contact
 								our{" "}
 								<Link
-									href="https://discord.gg/2tBnJ3jDJc"
+									href="https://www.softty.net"
 									className="text-[#71717a] underline"
 								>
 									support team

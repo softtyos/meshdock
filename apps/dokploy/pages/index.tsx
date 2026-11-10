@@ -527,7 +527,7 @@ export default function Home({ IS_CLOUD, enforceSSO }: Props) {
 						) : !hasCustomPasswordReset ? (
 							<Link
 								className="hover:underline text-muted-foreground"
-								href="https://docs.dokploy.com/docs/core/reset-password"
+								href="https://github.com/softtyos/meshdock#readme"
 								target="_blank"
 							>
 								Lost your password?

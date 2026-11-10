@@ -119,7 +119,7 @@ export const CompleteStep = ({ projectId, environmentId, onFinish }: Props) => {
 				</Button>
 				<Button variant="ghost" asChild>
 					<Link
-						href="https://docs.dokploy.com/docs/core"
+						href="https://github.com/softtyos/meshdock#readme"
 						target="_blank"
 						className="flex items-center gap-1.5"
 					>

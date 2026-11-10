@@ -115,7 +115,7 @@ export const UpdateTraefikVersion = ({ children, serverId }: Props) => {
 					<DialogTitle>Traefik Update</DialogTitle>
 					<DialogDescription>
 						Compare the running Traefik with the version recommended by this
-						Dokploy release.
+						Meshdock release.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -177,7 +177,7 @@ export const UpdateTraefikVersion = ({ children, serverId }: Props) => {
 									type="warning"
 									icon={<AlertCircle className="size-4" />}
 								>
-									Dokploy recommends Traefik v{data.recommendedVersion}.
+									Meshdock recommends Traefik v{data.recommendedVersion}.
 									Updating is optional and recreates the Traefik container, so
 									your applications may be unreachable for a few seconds. Env
 									variables and port mappings are kept.
@@ -189,18 +189,18 @@ export const UpdateTraefikVersion = ({ children, serverId }: Props) => {
 										type="success"
 										icon={<CheckCircle2 className="size-4" />}
 									>
-										Traefik is on the version recommended by Dokploy.
+										Traefik is on the version recommended by Meshdock.
 									</AlertBlock>
 								)}
 							{data.versionStatus === "newer" && (
 								<AlertBlock type="info" icon={<Info className="size-4" />}>
-									Traefik is newer than the version recommended by Dokploy. No
+									Traefik is newer than the version recommended by Meshdock. No
 									update needed.
 								</AlertBlock>
 							)}
 							{data.versionStatus === "custom" && (
 								<AlertBlock type="info" icon={<Info className="size-4" />}>
-									Traefik runs a custom image, so Dokploy won't update it.
+									Traefik runs a custom image, so Meshdock won't update it.
 									Saving Traefik env or port mappings replaces it with the
 									official image.
 								</AlertBlock>

@@ -48,7 +48,7 @@ export const ShowDokployActions = () => {
 					>
 						<span>Reload</span>
 					</DropdownMenuItem>
-					<TerminalModal serverId="local">
+					<TerminalModal serverId="local" asDropdownItem>
 						<span>Terminal</span>
 					</TerminalModal>
 					<ShowModalLogs appName="dokploy">

@@ -21,24 +21,13 @@ import { appRouter } from "@/server/api/root";
 import type { FleetNodeInfo } from "@/server/api/routers/fleet";
 import { api } from "@/utils/api";
 
-const FleetKpis = dynamic(
-	() => import("@/components/dashboard/fleet/fleet-kpis").then((m) => m.FleetKpis),
-	{ ssr: false },
-);
-const FleetMatrix = dynamic(
-	() => import("@/components/dashboard/fleet/fleet-matrix").then((m) => m.FleetMatrix),
-	{ ssr: false },
-);
-const FleetNodeDrawer = dynamic(
-	() => import("@/components/dashboard/fleet/fleet-node-drawer").then((m) => m.FleetNodeDrawer),
-	{ ssr: false },
-);
+import { FleetKpis } from "@/components/dashboard/fleet/fleet-kpis";
+import { FleetMatrix } from "@/components/dashboard/fleet/fleet-matrix";
+import { FleetNodeDrawer } from "@/components/dashboard/fleet/fleet-node-drawer";
+import { SwarmGlobalAgentModal } from "@/components/dashboard/fleet/swarm-global-agent-modal";
+
 const FleetTelemetry = dynamic(
 	() => import("@/components/dashboard/fleet/fleet-telemetry").then((m) => m.FleetTelemetry),
-	{ ssr: false },
-);
-const SwarmGlobalAgentModal = dynamic(
-	() => import("@/components/dashboard/fleet/swarm-global-agent-modal").then((m) => m.SwarmGlobalAgentModal),
 	{ ssr: false },
 );
 

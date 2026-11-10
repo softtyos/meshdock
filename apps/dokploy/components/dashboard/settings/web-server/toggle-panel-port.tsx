@@ -70,7 +70,7 @@ export const TogglePanelPort = () => {
 						type="warning"
 						className="items-center [&>div:first-child]:mt-0"
 					>
-						The Dokploy service will restart, which takes a few seconds.
+						The Meshdock service will restart, which takes a few seconds.
 					</AlertBlock>
 					{data?.enabled && (
 						<div className="space-y-2">

@@ -184,7 +184,7 @@ export const SetupServer = ({ serverId, children }: Props) => {
 											Automatic process
 										</span>
 										<Link
-											href="https://docs.dokploy.com/docs/core/remote-servers/instructions#requirements"
+											href="https://github.com/softtyos/meshdock#readme"
 											target="_blank"
 											className="text-primary flex flex-row gap-2"
 										>

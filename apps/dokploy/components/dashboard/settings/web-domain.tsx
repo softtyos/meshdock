@@ -165,7 +165,7 @@ export const WebDomain = () => {
 												<FormControl>
 													<Input
 														className="w-full"
-														placeholder={"dokploy.com"}
+														placeholder={"meshdock.example.com"}
 														{...field}
 													/>
 												</FormControl>

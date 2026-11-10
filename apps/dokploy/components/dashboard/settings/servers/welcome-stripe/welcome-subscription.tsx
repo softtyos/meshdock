@@ -56,7 +56,7 @@ const WelcomeIntro = ({ onNext }: { onNext: () => void }) => (
 				Welcome
 			</span>
 			<h1 className="text-xl font-semibold tracking-tight">
-				Welcome to Dokploy Cloud
+				Welcome to Meshdock Cloud
 			</h1>
 			<p className="text-muted-foreground leading-relaxed">
 				Thanks for subscribing — you're all set up. Next, connect a server so
@@ -125,11 +125,11 @@ const CompleteIntro = ({ onFinish }: { onFinish: () => void }) => {
 					Go to dashboard
 				</Button>
 				<Link
-					href="https://discord.com/invite/2tBnJ3jDJc"
+					href="https://www.softty.net"
 					target="_blank"
 					className="text-sm text-muted-foreground hover:text-foreground transition-colors"
 				>
-					Need help? Join our Discord →
+					Need help? Contact Softty Support →
 				</Link>
 			</div>
 		</div>

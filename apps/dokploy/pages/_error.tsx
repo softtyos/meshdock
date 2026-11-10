@@ -80,7 +80,7 @@ export default function ErrorPage({ statusCode }: Props) {
 								whitelabeling.footerText
 							) : (
 								<Link
-									href="https://github.com/Dokploy/dokploy/issues"
+									href="https://github.com/softtyos/meshdock/issues"
 									target="_blank"
 									className="underline hover:text-primary transition-colors"
 								>

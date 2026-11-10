@@ -705,8 +705,8 @@ export const notificationRouter = createTRPCRouter({
 					input,
 					"Test Notification",
 					"",
-					"view, visit Dokploy on Github, https://github.com/dokploy/dokploy, clear=true;",
-					"Hi, From Dokploy 👋",
+					"view, visit Meshdock on Github, https://github.com/softtyos/meshdock, clear=true;",
+					"Hi, From Meshdock 👋",
 				);
 				return true;
 			} catch (error) {

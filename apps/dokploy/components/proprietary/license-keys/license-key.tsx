@@ -79,7 +79,7 @@ export function LicenseKeySettings() {
 							To unlock extra features you need an enterprise license key.
 							Contact us{" "}
 							<Link
-								href="https://dokploy.com/contact"
+								href="https://www.softty.net"
 								target="_blank"
 								rel="noreferrer"
 								className="underline underline-offset-4"

@@ -21,7 +21,7 @@ export type TemplateProps = {
 
 export const VerifyEmailTemplate = ({
 	userName = "User",
-	verificationUrl = "https://app.dokploy.com/verify",
+	verificationUrl = "https://app.softty.net/verify",
 }: TemplateProps) => {
 	const previewText = "Verify your email address to get started with Dokploy";
 	return (
@@ -34,7 +34,7 @@ export const VerifyEmailTemplate = ({
 						{/* Header */}
 						<Section className="bg-[#09090b] rounded-t-xl px-[40px] py-[32px] text-center">
 							<Img
-								src="https://raw.githubusercontent.com/Dokploy/website/refs/heads/main/apps/docs/public/logo-dokploy-blackpng.png"
+								src="https://raw.githubusercontent.com/softtyos/meshdock/refs/heads/dev/apps/dokploy/logo.png"
 								width="190"
 								height="120"
 								alt="Dokploy"
@@ -76,7 +76,7 @@ export const VerifyEmailTemplate = ({
 							<Text className="text-[#a1a1aa] text-[12px] leading-[18px] m-0">
 								This is an automated email from{" "}
 								<Link
-									href="https://dokploy.com"
+									href="https://www.softty.net"
 									className="text-[#71717a] underline"
 								>
 									Dokploy Cloud

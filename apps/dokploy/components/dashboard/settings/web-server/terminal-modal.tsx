@@ -25,12 +25,14 @@ interface Props {
 	children?: React.ReactNode;
 	serverId: string;
 	asButton?: boolean;
+	asDropdownItem?: boolean;
 }
 
 export const TerminalModal = ({
 	children,
 	serverId,
-	asButton = false,
+	asButton = true,
+	asDropdownItem = false,
 }: Props) => {
 	const [terminalKey, setTerminalKey] = useState<string>(() =>
 		getTerminalKey(),
@@ -52,9 +54,7 @@ export const TerminalModal = ({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			{asButton ? (
-				<DialogTrigger asChild>{children}</DialogTrigger>
-			) : (
+			{asDropdownItem ? (
 				<DropdownMenuItem
 					className="w-full cursor-pointer space-x-3"
 					onSelect={(e) => {
@@ -64,6 +64,8 @@ export const TerminalModal = ({
 				>
 					{children}
 				</DropdownMenuItem>
+			) : (
+				<DialogTrigger asChild>{children}</DialogTrigger>
 			)}
 			<DialogContent
 				className="sm:max-w-7xl"

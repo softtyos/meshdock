@@ -252,7 +252,7 @@ export const AddImport = ({ environmentId, projectName }: Props) => {
 												<SelectTrigger>
 													<SelectValue
 														placeholder={
-															!isCloud ? "Dokploy" : "Select a Server"
+															!isCloud ? "Meshdock (Local)" : "Select a Server"
 														}
 													/>
 												</SelectTrigger>

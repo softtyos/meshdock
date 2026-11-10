@@ -212,7 +212,7 @@ export const AddCompose = ({ environmentId, projectName }: Props) => {
 											<SelectTrigger>
 												<SelectValue
 													placeholder={
-														showLocalOption ? "Dokploy" : "Select a Server"
+														showLocalOption ? "Meshdock (Local)" : "Select a Server"
 													}
 												/>
 											</SelectTrigger>

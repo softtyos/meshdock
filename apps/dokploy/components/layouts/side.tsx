@@ -461,12 +461,12 @@ const MENU: Menu = {
 	help: [
 		{
 			name: "Documentation",
-			url: "https://docs.dokploy.com/docs/core",
+			url: "https://github.com/softtyos/meshdock#readme",
 			icon: BookIcon,
 		},
 		{
 			name: "Support",
-			url: "https://discord.gg/2tBnJ3jDJc",
+			url: "https://www.softty.net",
 			icon: CircleHelp,
 		},
 	],

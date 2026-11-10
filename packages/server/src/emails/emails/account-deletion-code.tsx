@@ -34,7 +34,7 @@ export const AccountDeletionCodeTemplate = ({
 					<Container className="my-[40px] mx-auto max-w-[520px]">
 						<Section className="bg-[#09090b] rounded-t-xl px-[40px] py-[32px] text-center">
 							<Img
-								src="https://raw.githubusercontent.com/Dokploy/website/refs/heads/main/apps/docs/public/logo-dokploy-blackpng.png"
+								src="https://raw.githubusercontent.com/softtyos/meshdock/refs/heads/dev/apps/dokploy/logo.png"
 								width="190"
 								height="120"
 								alt="Dokploy"
@@ -69,7 +69,7 @@ export const AccountDeletionCodeTemplate = ({
 								If you did not request this, someone else may have access to
 								your account. Change your password and contact{" "}
 								<Link
-									href="https://dokploy.com"
+									href="https://www.softty.net"
 									className="text-[#71717a] underline"
 								>
 									Dokploy support
