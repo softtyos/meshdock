@@ -68,7 +68,7 @@ export const FleetKpis = ({ kpis, isLoading }: FleetKpisProps) => {
 							)}
 						</div>
 					</div>
-					<div className="h-10 w-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+					<div className="h-10 w-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
 						<Server className="h-5 w-5" />
 					</div>
 				</CardContent>
@@ -87,12 +87,12 @@ export const FleetKpis = ({ kpis, isLoading }: FleetKpisProps) => {
 							</span>
 							<span className="text-xs text-muted-foreground">Clusters</span>
 						</div>
-						<div className="flex items-center gap-1.5 mt-2 text-xs text-blue-400 font-medium">
+						<div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
 							<Layers className="h-3.5 w-3.5" />
 							<span>{swarmNodes} Cluster Nodes</span>
 						</div>
 					</div>
-					<div className="h-10 w-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+					<div className="h-10 w-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
 						<Network className="h-5 w-5" />
 					</div>
 				</CardContent>
@@ -111,12 +111,12 @@ export const FleetKpis = ({ kpis, isLoading }: FleetKpisProps) => {
 							</span>
 							<span className="text-xs text-muted-foreground">Dedicated</span>
 						</div>
-						<div className="flex items-center gap-1.5 mt-2 text-xs text-amber-400 font-medium">
+						<div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
 							<ShieldCheck className="h-3.5 w-3.5" />
 							<span>Isolated Workloads</span>
 						</div>
 					</div>
-					<div className="h-10 w-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+					<div className="h-10 w-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
 						<HardDrive className="h-5 w-5" />
 					</div>
 				</CardContent>
@@ -135,12 +135,12 @@ export const FleetKpis = ({ kpis, isLoading }: FleetKpisProps) => {
 							</span>
 							<span className="text-xs text-muted-foreground">vCPUs</span>
 						</div>
-						<div className="flex items-center gap-1.5 mt-2 text-xs text-purple-400 font-medium">
+						<div className="flex items-center gap-1.5 mt-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
 							<Zap className="h-3.5 w-3.5" />
 							<span>{totalMemoryGB} GB RAM Pool</span>
 						</div>
 					</div>
-					<div className="h-10 w-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+					<div className="h-10 w-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
 						<Cpu className="h-5 w-5" />
 					</div>
 				</CardContent>
@@ -159,12 +159,12 @@ export const FleetKpis = ({ kpis, isLoading }: FleetKpisProps) => {
 							</span>
 							<span className="text-xs text-muted-foreground">Running</span>
 						</div>
-						<div className="flex items-center gap-1.5 mt-2 text-xs text-cyan-400 font-medium">
+						<div className="flex items-center gap-1.5 mt-2 text-xs text-cyan-600 dark:text-cyan-400 font-medium">
 							<Activity className="h-3.5 w-3.5" />
 							<span>Zero-downtime mesh</span>
 						</div>
 					</div>
-					<div className="h-10 w-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+					<div className="h-10 w-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
 						<Boxes className="h-5 w-5" />
 					</div>
 				</CardContent>

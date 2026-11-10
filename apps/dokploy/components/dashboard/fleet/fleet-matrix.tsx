@@ -160,7 +160,7 @@ export const FleetMatrix = ({
 								className={`group relative transition-all duration-200 cursor-pointer overflow-hidden border ${
 									isOnline
 										? "hover:border-emerald-500/50 hover:shadow-md bg-card/60"
-										: "border-rose-500/30 bg-rose-950/10"
+										: "border-rose-500/30 bg-rose-500/10"
 								}`}
 								onClick={() => onSelectNode(node)}
 							>
@@ -202,10 +202,10 @@ export const FleetMatrix = ({
 											variant="outline"
 											className={`text-[10px] uppercase font-semibold shrink-0 ${
 												node.role === "swarm-manager"
-													? "border-blue-500/40 text-blue-400 bg-blue-500/10"
+													? "border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-500/10"
 													: node.role === "swarm-worker"
-														? "border-cyan-500/40 text-cyan-400 bg-cyan-500/10"
-														: "border-zinc-500/40 text-zinc-400 bg-zinc-500/10"
+														? "border-cyan-500/40 text-cyan-600 dark:text-cyan-400 bg-cyan-500/10"
+														: "border-zinc-500/40 text-zinc-600 dark:text-zinc-400 bg-zinc-500/10"
 											}`}
 										>
 											{node.role === "swarm-manager"
@@ -231,7 +231,7 @@ export const FleetMatrix = ({
 									{/* Containers & Actions */}
 									<div className="flex items-center justify-between pt-1">
 										<div className="flex items-center gap-1 text-xs text-foreground/80 font-medium">
-											<Activity className="h-3 w-3 text-emerald-400" />
+											<Activity className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
 											<span>{node.containersRunning} running</span>
 										</div>
 

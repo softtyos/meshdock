@@ -138,7 +138,18 @@ export const TopologyCanvas = ({
 	};
 
 	return (
-		<div className="relative w-full rounded-xl border border-border/70 bg-[#090A0D] overflow-hidden shadow-2xl">
+		<div className="relative w-full rounded-xl border border-border/80 bg-slate-50/70 dark:bg-[#090A0D] overflow-hidden shadow-sm transition-colors duration-200">
+			{/* Architecture blueprint grid texture */}
+			<div
+				className="pointer-events-none absolute inset-0 opacity-40 dark:opacity-10"
+				style={{
+					backgroundImage:
+						"radial-gradient(circle, currentColor 1px, transparent 1px)",
+					backgroundSize: "20px 20px",
+					color: "var(--border)",
+				}}
+			/>
+
 			{/* Canvas Toolbar */}
 			<div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
 				{/* Search & Tier Filter */}
@@ -149,11 +160,11 @@ export const TopologyCanvas = ({
 							placeholder="Search topology nodes..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-8 h-8 text-xs bg-background/90 backdrop-blur-md border-border/80"
+							className="pl-8 h-8 text-xs bg-card/90 dark:bg-background/90 backdrop-blur-md border-border/80 shadow-xs"
 						/>
 					</div>
 
-					<div className="flex items-center bg-background/90 backdrop-blur-md border border-border/80 rounded-lg p-0.5">
+					<div className="flex items-center bg-card/90 dark:bg-background/90 backdrop-blur-md border border-border/80 rounded-lg p-0.5 shadow-xs">
 						<Button
 							variant={activeTier === "all" ? "default" : "ghost"}
 							size="sm"
@@ -198,7 +209,7 @@ export const TopologyCanvas = ({
 				</div>
 
 				{/* Zoom & Canvas Actions */}
-				<div className="flex items-center gap-1.5 pointer-events-auto bg-background/90 backdrop-blur-md border border-border/80 rounded-lg p-1">
+				<div className="flex items-center gap-1.5 pointer-events-auto bg-card/90 dark:bg-background/90 backdrop-blur-md border border-border/80 rounded-lg p-1 shadow-xs">
 					<Button
 						variant="ghost"
 						size="icon"
@@ -245,15 +256,15 @@ export const TopologyCanvas = ({
 
 			{/* Interactive Diagram Flow Area */}
 			<div
-				className="min-h-[680px] p-6 pt-20 transition-transform duration-150 origin-top flex flex-col items-center justify-start space-y-12 select-none overflow-x-auto"
+				className="min-h-[680px] p-6 pt-20 transition-transform duration-150 origin-top flex flex-col items-center justify-start space-y-12 select-none overflow-x-auto relative z-10"
 				style={{ transform: `scale(${zoom})` }}
 			>
 				{/* LAYER 1: Edge & Ingress */}
 				{(activeTier === "all" || activeTier === "ingress") && (
 					<div className="w-full flex flex-col items-center space-y-3">
 						<div className="flex items-center gap-2">
-							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-								<Shield className="h-3.5 w-3.5 text-cyan-400" />
+							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
+								<Shield className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-400" />
 								Tier 1: Edge Routing & Ingress ({tiers.ingress.length})
 							</span>
 						</div>
@@ -262,7 +273,7 @@ export const TopologyCanvas = ({
 								<div
 									key={node.id}
 									onClick={() => setSelectedNode(node)}
-									className={`px-4 py-2.5 rounded-xl border bg-card/80 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-105 shadow-md flex items-center gap-3 ${
+									className={`px-4 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-3 ${
 										selectedNode?.id === node.id
 											? "border-emerald-500 ring-2 ring-emerald-500/20"
 											: "border-border/70 hover:border-cyan-500/50"
@@ -291,7 +302,7 @@ export const TopologyCanvas = ({
 						{/* Connector Down */}
 						<div className="flex flex-col items-center text-muted-foreground/40 py-1">
 							<div className="w-0.5 h-6 bg-linear-to-b from-cyan-500/60 to-blue-500/60" />
-							<ArrowDown className="h-4 w-4 text-blue-400" />
+							<ArrowDown className="h-4 w-4 text-blue-500 dark:text-blue-400" />
 						</div>
 					</div>
 				)}
@@ -300,8 +311,8 @@ export const TopologyCanvas = ({
 				{(activeTier === "all" || activeTier === "cluster") && (
 					<div className="w-full flex flex-col items-center space-y-3">
 						<div className="flex items-center gap-2">
-							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-								<Layers className="h-3.5 w-3.5 text-blue-400" />
+							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
+								<Layers className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
 								Tier 2: Multi-Cluster Infrastructure ({tiers.cluster.length})
 							</span>
 						</div>
@@ -310,7 +321,7 @@ export const TopologyCanvas = ({
 								<div
 									key={node.id}
 									onClick={() => setSelectedNode(node)}
-									className={`px-5 py-3 rounded-xl border bg-card/80 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-105 shadow-md flex items-center gap-3.5 ${
+									className={`px-5 py-3 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-3.5 ${
 										selectedNode?.id === node.id
 											? "border-blue-500 ring-2 ring-blue-500/20"
 											: "border-border/70 hover:border-blue-500/50"
@@ -339,7 +350,7 @@ export const TopologyCanvas = ({
 						{/* Connector Down */}
 						<div className="flex flex-col items-center text-muted-foreground/40 py-1">
 							<div className="w-0.5 h-6 bg-linear-to-b from-blue-500/60 to-purple-500/60" />
-							<ArrowDown className="h-4 w-4 text-purple-400" />
+							<ArrowDown className="h-4 w-4 text-purple-500 dark:text-purple-400" />
 						</div>
 					</div>
 				)}
@@ -348,14 +359,14 @@ export const TopologyCanvas = ({
 				{(activeTier === "all" || activeTier === "service") && (
 					<div className="w-full flex flex-col items-center space-y-3">
 						<div className="flex items-center gap-2">
-							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-								<Zap className="h-3.5 w-3.5 text-purple-400" />
+							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
+								<Zap className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
 								Tier 3: Workload Services & Stacks ({tiers.service.length})
 							</span>
 						</div>
 						<div className="flex flex-wrap items-center justify-center gap-4 max-w-5xl">
 							{tiers.service.length === 0 ? (
-								<div className="text-xs text-muted-foreground py-2 border border-dashed rounded-lg px-6">
+								<div className="text-xs text-muted-foreground py-2 border border-dashed rounded-lg px-6 bg-card/40">
 									No standalone applications or compose stacks configured yet.
 								</div>
 							) : (
@@ -363,7 +374,7 @@ export const TopologyCanvas = ({
 									<div
 										key={node.id}
 										onClick={() => setSelectedNode(node)}
-										className={`px-4 py-2.5 rounded-xl border bg-card/80 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-105 shadow-md flex items-center gap-3 ${
+										className={`px-4 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-3 ${
 											selectedNode?.id === node.id
 												? "border-purple-500 ring-2 ring-purple-500/20"
 												: "border-border/70 hover:border-purple-500/50"
@@ -393,7 +404,7 @@ export const TopologyCanvas = ({
 						{/* Connector Down */}
 						<div className="flex flex-col items-center text-muted-foreground/40 py-1">
 							<div className="w-0.5 h-6 bg-linear-to-b from-purple-500/60 to-emerald-500/60" />
-							<ArrowDown className="h-4 w-4 text-emerald-400" />
+							<ArrowDown className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
 						</div>
 					</div>
 				)}
@@ -402,8 +413,8 @@ export const TopologyCanvas = ({
 				{(activeTier === "all" || activeTier === "data") && (
 					<div className="w-full flex flex-col items-center space-y-3">
 						<div className="flex items-center gap-2">
-							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-								<Database className="h-3.5 w-3.5 text-emerald-400" />
+							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
+								<Database className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
 								Tier 4: Databases & Persistent Storage ({tiers.data.length})
 							</span>
 						</div>
@@ -412,7 +423,7 @@ export const TopologyCanvas = ({
 								<div
 									key={node.id}
 									onClick={() => setSelectedNode(node)}
-									className={`px-4 py-2.5 rounded-xl border bg-card/80 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-105 shadow-md flex items-center gap-3 ${
+									className={`px-4 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-3 ${
 										selectedNode?.id === node.id
 											? "border-emerald-500 ring-2 ring-emerald-500/20"
 											: "border-border/70 hover:border-emerald-500/50"

@@ -192,7 +192,7 @@ export const OnboardingWizard = ({ onClose }: Props) => {
 							)}
 							<div className="flex items-center gap-3 text-zinc-500">
 								<Link
-									href="https://github.com/dokploy/dokploy"
+									href="https://github.com/softtyos/meshdock"
 									target="_blank"
 									className="hover:text-zinc-200 transition-colors"
 								>

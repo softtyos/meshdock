@@ -10,6 +10,7 @@ import {
 	Zap,
 } from "lucide-react";
 import React, { useState } from "react";
+import { useTheme } from "next-themes";
 import {
 	Area,
 	AreaChart,
@@ -43,6 +44,8 @@ interface FleetTelemetryProps {
 export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 	const utils = api.useUtils();
 	const [points, setPoints] = useState<number>(20);
+	const { resolvedTheme } = useTheme();
+	const isDark = resolvedTheme === "dark";
 
 	const {
 		data: telemetryData,
@@ -79,6 +82,18 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 	};
 
 	const latest = telemetryData?.[telemetryData.length - 1];
+
+	const chartGridColor = isDark ? "#27272a" : "#e2e8f0";
+	const chartAxisTextColor = isDark ? "#71717a" : "#64748b";
+	const chartAxisLineColor = isDark ? "#3f3f46" : "#cbd5e1";
+	const tooltipStyle = {
+		backgroundColor: isDark ? "#090a0d" : "#ffffff",
+		borderColor: isDark ? "#27272a" : "#e2e8f0",
+		color: isDark ? "#f8fafc" : "#0f172a",
+		borderRadius: 8,
+		fontSize: 12,
+		boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+	};
 
 	return (
 		<div className="space-y-6">
@@ -139,26 +154,19 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 											<stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
 										</linearGradient>
 									</defs>
-									<CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+									<CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
 									<XAxis
 										dataKey="timestamp"
-										tick={{ fill: "#71717a", fontSize: 10 }}
-										stroke="#3f3f46"
+										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
+										stroke={chartAxisLineColor}
 									/>
 									<YAxis
 										domain={[0, 100]}
-										tick={{ fill: "#71717a", fontSize: 10 }}
-										stroke="#3f3f46"
+										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
+										stroke={chartAxisLineColor}
 										unit="%"
 									/>
-									<Tooltip
-										contentStyle={{
-											backgroundColor: "#090a0d",
-											borderColor: "#27272a",
-											borderRadius: 8,
-											fontSize: 12,
-										}}
-									/>
+									<Tooltip contentStyle={tooltipStyle} />
 									<Area
 										type="monotone"
 										dataKey="cpu"
@@ -204,26 +212,19 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 											<stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
 										</linearGradient>
 									</defs>
-									<CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+									<CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
 									<XAxis
 										dataKey="timestamp"
-										tick={{ fill: "#71717a", fontSize: 10 }}
-										stroke="#3f3f46"
+										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
+										stroke={chartAxisLineColor}
 									/>
 									<YAxis
 										domain={[0, (latest?.memTotalGB || 8) * 1.1]}
-										tick={{ fill: "#71717a", fontSize: 10 }}
-										stroke="#3f3f46"
+										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
+										stroke={chartAxisLineColor}
 										unit="GB"
 									/>
-									<Tooltip
-										contentStyle={{
-											backgroundColor: "#090a0d",
-											borderColor: "#27272a",
-											borderRadius: 8,
-											fontSize: 12,
-										}}
-									/>
+									<Tooltip contentStyle={tooltipStyle} />
 									<Area
 										type="monotone"
 										dataKey="memUsedGB"
@@ -263,25 +264,18 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 						<div className="h-[200px] w-full">
 							<ResponsiveContainer width="100%" height="100%">
 								<LineChart data={telemetryData || []}>
-									<CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+									<CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
 									<XAxis
 										dataKey="timestamp"
-										tick={{ fill: "#71717a", fontSize: 10 }}
-										stroke="#3f3f46"
+										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
+										stroke={chartAxisLineColor}
 									/>
 									<YAxis
-										tick={{ fill: "#71717a", fontSize: 10 }}
-										stroke="#3f3f46"
+										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
+										stroke={chartAxisLineColor}
 										unit="KB/s"
 									/>
-									<Tooltip
-										contentStyle={{
-											backgroundColor: "#090a0d",
-											borderColor: "#27272a",
-											borderRadius: 8,
-											fontSize: 12,
-										}}
-									/>
+									<Tooltip contentStyle={tooltipStyle} />
 									<Line
 										type="monotone"
 										dataKey="netInKB"

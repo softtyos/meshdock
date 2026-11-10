@@ -226,7 +226,7 @@ export const UpdateServer = ({
 				{hasCheckedUpdate && isPending && (
 					<div className="mb-8">
 						<div className="flex flex-col items-center gap-6 mb-6">
-							<div className="rounded-full p-4 bg-[#5B9DFF]/40 text-foreground">
+							<div className="rounded-full p-4 bg-primary/10 text-primary">
 								<RefreshCcw className="h-8 w-8 animate-spin" />
 							</div>
 							<div className="text-center space-y-2">
@@ -241,15 +241,15 @@ export const UpdateServer = ({
 				)}
 
 				{isUpdateAvailable && (
-					<div className="rounded-lg bg-[#16254D] p-4 mb-8">
+					<div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 mb-8 text-blue-600 dark:text-blue-400">
 						<div className="flex gap-2">
-							<Info className="h-5 w-5 shrink-0 text-[#5B9DFF]" />
-							<div className="text-[#5B9DFF]">
+							<Info className="h-5 w-5 shrink-0 text-blue-500" />
+							<div>
 								We recommend reviewing the{" "}
 								<Link
 									href="https://github.com/softtyos/meshdock/releases"
 									target="_blank"
-									className="text-white underline hover:text-zinc-200"
+									className="underline hover:opacity-80 font-medium"
 								>
 									release notes
 								</Link>{" "}
