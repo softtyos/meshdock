@@ -1,0 +1,52 @@
+<svg viewBox="0 0 600 160" width="600" height="160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="meshdockLogoGrad" x1="20" y1="20" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06B6D4"/>
+      <stop offset="50%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="360" y1="50" x2="560" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <filter id="logoGlow" x="0" y="0" width="180" height="160" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Meshdock Symbol (Scaled 128x128 at offset 16, 16) -->
+  <g transform="translate(16, 16) scale(0.25)" filter="url(#logoGlow)">
+    <!-- Base Dock Frame -->
+    <path d="M91.5 351 L256 446 L420.5 351" stroke="#64748B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+    <path d="M256 256 L256 446" stroke="#64748B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+    <path d="M91.5 161 L256 66 L420.5 161" stroke="#64748B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+    <path d="M256 66 L256 256" stroke="#64748B" stroke-width="18" stroke-dasharray="10 10" stroke-linecap="round" opacity="0.35"/>
+
+    <!-- Main MESH Ribbon ('M') -->
+    <path d="M91.5 351 L91.5 161 L256 256 L420.5 161 L420.5 351" stroke="url(#meshdockLogoGrad)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Topology Node Points -->
+    <circle cx="256" cy="66" r="18" fill="#94A3B8"/>
+    <circle cx="256" cy="446" r="18" fill="#94A3B8"/>
+
+    <!-- Core Active Server Nodes -->
+    <circle cx="91.5" cy="351" r="24" fill="#38BDF8"/>
+    <circle cx="91.5" cy="161" r="26" fill="#38BDF8"/>
+    <circle cx="256" cy="256" r="28" fill="#3B82F6"/>
+    <circle cx="420.5" cy="161" r="26" fill="#818CF8"/>
+    <circle cx="420.5" cy="351" r="24" fill="#818CF8"/>
+
+    <!-- Node Highlights -->
+    <circle cx="256" cy="256" r="12" fill="#FFFFFF"/>
+    <circle cx="91.5" cy="161" r="10" fill="#FFFFFF"/>
+    <circle cx="420.5" cy="161" r="10" fill="#FFFFFF"/>
+    <circle cx="91.5" cy="351" r="9" fill="#FFFFFF"/>
+    <circle cx="420.5" cy="351" r="9" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Meshdock Wordmark -->
+  <text x="165" y="104" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="74" font-weight="800" letter-spacing="-1.5" fill="#0F172A">
+    Mesh<tspan fill="url(#textGrad)">dock</tspan>
+  </text>
+</svg>
