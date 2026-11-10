@@ -22,11 +22,13 @@ import {
 	updateServerById,
 } from "@dokploy/server";
 import { db } from "@dokploy/server/db";
+import { providerFetch } from "@dokploy/server/services/logs-and-metrics/provider-fetch";
 import {
 	findMemberByUserId,
 	hasPermission,
 } from "@dokploy/server/services/permission";
 import { hasValidLicense } from "@dokploy/server/services/proprietary/license-key";
+import { findSSHKeyById } from "@dokploy/server/services/ssh-key";
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
 import { and, desc, eq, getTableColumns, isNotNull, sql } from "drizzle-orm";
@@ -73,6 +75,20 @@ const toServerOptions = async (
 	}));
 };
 
+const assertSshKeyInOrganization = async (
+	sshKeyId: string | null | undefined,
+	organizationId: string,
+) => {
+	if (!sshKeyId) return;
+	const sshKey = await findSSHKeyById(sshKeyId);
+	if (sshKey.organizationId !== organizationId) {
+		throw new TRPCError({
+			code: "UNAUTHORIZED",
+			message: "You are not authorized to use this SSH key",
+		});
+	}
+};
+
 export const serverRouter = createTRPCRouter({
 	create: withPermission("server", "create")
 		.input(apiCreateServer)
@@ -86,6 +102,10 @@ export const serverRouter = createTRPCRouter({
 						message: "You cannot create more servers",
 					});
 				}
+				await assertSshKeyInOrganization(
+					input.sshKeyId,
+					ctx.session.activeOrganizationId,
+				);
 				const project = await createServer(
 					input,
 					ctx.session.activeOrganizationId,
@@ -558,6 +578,10 @@ export const serverRouter = createTRPCRouter({
 						message: "Server is inactive",
 					});
 				}
+				await assertSshKeyInOrganization(
+					input.sshKeyId,
+					ctx.session.activeOrganizationId,
+				);
 				const currentServer = await updateServerById(input.serverId, {
 					...input,
 				});
@@ -640,18 +664,23 @@ export const serverRouter = createTRPCRouter({
 
 				const url = new URL(resolvedUrl);
 				url.searchParams.append("limit", input.dataPoints);
-
 				let response: Response;
 				try {
-					response = await fetch(url.toString(), {
+					response = await providerFetch(url.toString(), {
 						headers: {
 							Authorization: `Bearer ${input.token}`,
 						},
 					});
 				} catch (fetchErr) {
-					if (url.hostname !== "dokploy-monitoring") {
+					if (
+						url.hostname !== "dokploy-monitoring" &&
+						!(
+							fetchErr instanceof Error &&
+							fetchErr.message.includes("blocked address")
+						)
+					) {
 						url.hostname = "dokploy-monitoring";
-						response = await fetch(url.toString(), {
+						response = await providerFetch(url.toString(), {
 							headers: {
 								Authorization: `Bearer ${input.token}`,
 							},
@@ -660,7 +689,6 @@ export const serverRouter = createTRPCRouter({
 						throw fetchErr;
 					}
 				}
-
 				if (!response.ok) {
 					throw new Error(
 						`Error ${response.status}: ${response.statusText}. Ensure the container is running and this service is included in the monitoring configuration.`,
