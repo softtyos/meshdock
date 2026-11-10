@@ -93,7 +93,7 @@ generate_random_password() {
 install_dokploy() {
     # Detect version tag
     VERSION_TAG=$(detect_version)
-    DOCKER_IMAGE="softtynet/dokploy:latest"
+    DOCKER_IMAGE="softtynet/meshdock:latest"
     
     echo "Installing Dokploy version: ${VERSION_TAG}"
     if [ "$(id -u)" != "0" ]; then
@@ -389,7 +389,7 @@ install_dokploy() {
 update_dokploy() {
     # Detect version tag
     VERSION_TAG=$(detect_version)
-    DOCKER_IMAGE="softtynet/dokploy:latest"
+    DOCKER_IMAGE="softtynet/meshdock:latest"
 
     echo "Updating Meshdock to version: ${VERSION_TAG}"
 

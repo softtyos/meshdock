@@ -661,13 +661,13 @@ export const settingsRouter = createTRPCRouter({
 						);
 						const runningImg = stdout.trim();
 						if (runningImg) {
-							baseImage = runningImg.split(":")[0]?.split("@")[0] || "softtynet/dokploy";
+							baseImage = runningImg.split(":")[0]?.split("@")[0] || "softtynet/meshdock";
 						}
 					} catch {
-						baseImage = "softtynet/dokploy";
+						baseImage = "softtynet/meshdock";
 					}
 				}
-				if (!baseImage) baseImage = "softtynet/dokploy";
+				if (!baseImage) baseImage = "softtynet/meshdock";
 				const targetTag = input?.imageTag || data.latestVersion || "latest";
 				const targetImage = `${baseImage}:${targetTag}`;
 

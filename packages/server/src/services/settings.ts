@@ -52,10 +52,19 @@ export const getUpdateData = async (
 	currentVersion: string,
 ): Promise<IUpdateData> => {
 	try {
-		const baseUrl =
-			"https://hub.docker.com/v2/repositories/softtynet/dokploy/tags";
+		const targetRepo = process.env.DOKPLOY_IMAGE ? process.env.DOKPLOY_IMAGE.split(":")[0] : "softtynet/meshdock";
+		let baseUrl = `https://hub.docker.com/v2/repositories/${targetRepo}/tags`;
 		let url: string | null = `${baseUrl}?page_size=100`;
 		let allResults: { digest: string; name: string }[] = [];
+
+		// Fetch all tags from Docker Hub (fallback to softtynet/dokploy if meshdock repo is new)
+		try {
+			const checkRes = await fetch(url, { method: "GET" });
+			if (!checkRes.ok && targetRepo === "softtynet/meshdock") {
+				baseUrl = "https://hub.docker.com/v2/repositories/softtynet/dokploy/tags";
+				url = `${baseUrl}?page_size=100`;
+			}
+		} catch {}
 
 		// Fetch all tags from Docker Hub
 		while (url) {
@@ -306,7 +315,7 @@ export const reloadDockerResource = async (
 				imageTag = currentImageTag;
 			}
 
-			command = `docker service update --force --image softtynet/dokploy:${imageTag} ${resourceName}`;
+			command = `docker service update --update-order stop-first --force --image softtynet/meshdock:${imageTag} ${resourceName}`;
 		} else {
 			command = `docker service update --force ${resourceName}`;
 		}

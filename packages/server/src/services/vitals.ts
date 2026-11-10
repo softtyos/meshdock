@@ -512,3 +512,317 @@ export const optimizeHostResources = async (
 			};
 	}
 };
+
+export interface ListeningPortItem {
+	protocol: "TCP" | "UDP";
+	port: number;
+	ip: string;
+	isPublic: boolean;
+	service: string;
+	containerName?: string;
+	processName?: string;
+	riskLevel: "safe" | "info" | "warning" | "danger";
+	description: string;
+}
+
+export interface SecurityInspectionResult {
+	checkedAt: string;
+	firewallStatus: "active" | "inactive" | "unsupported";
+	firewallDetails?: string;
+	totalOpenPorts: number;
+	publicPortsCount: number;
+	highRiskPortsCount: number;
+	ports: ListeningPortItem[];
+	securityScore: number;
+	recommendations: string[];
+}
+
+const classifyPortRisk = (
+	port: number,
+	protocol: string,
+	isPublic: boolean,
+	serviceName: string,
+): { risk: "safe" | "info" | "warning" | "danger"; desc: string } => {
+	const dangerousDbPorts: Record<number, string> = {
+		5432: "PostgreSQL Database",
+		3306: "MySQL / MariaDB Database",
+		6379: "Redis In-Memory Cache",
+		27017: "MongoDB Database",
+		9200: "Elasticsearch Engine",
+		2375: "Unencrypted Docker Daemon API",
+	};
+
+	if (isPublic && dangerousDbPorts[port]) {
+		return {
+			risk: "danger",
+			desc: `Cổng ${dangerousDbPorts[port]} mở trực tiếp ra internet công cộng (0.0.0.0). Nguy cơ cao bị brute-force hoặc quét lỗ hổng!`,
+		};
+	}
+
+	if (port === 22 && isPublic) {
+		return {
+			risk: "warning",
+			desc: "Cổng SSH 22 mở công khai cho mọi địa chỉ IP. Khuyến nghị bật SSH Key và tắt Password Auth.",
+		};
+	}
+
+	if (port === 3000 && isPublic) {
+		return {
+			risk: "info",
+			desc: "Cổng Web Dashboard quản trị Meshdock.",
+		};
+	}
+
+	if ((port === 80 || port === 443) && isPublic) {
+		return {
+			risk: "safe",
+			desc: "Cổng Ingress Web tiêu chuẩn (HTTP / HTTPS) được định tuyến và mã hóa qua Traefik.",
+		};
+	}
+
+	if (port === 2377 || port === 7946 || port === 4789) {
+		return {
+			risk: "info",
+			desc: "Cổng giao tiếp nội bộ cụm Docker Swarm Mesh.",
+		};
+	}
+
+	if (!isPublic) {
+		return {
+			risk: "safe",
+			desc: "Cổng cục bộ (Localhost / Loopback), an toàn không thể truy cập từ mạng ngoài.",
+		};
+	}
+
+	return {
+		risk: "info",
+		desc: `Cổng ${protocol} công khai được mở bởi dịch vụ ${serviceName || "hệ thống"}.`,
+	};
+};
+
+/**
+ * Enterprise Host Security & Open Port Matrix Inspector
+ */
+export const getSecurityInspection = async (
+	serverId?: string | null,
+): Promise<SecurityInspectionResult> => {
+	const sid = serverId ?? undefined;
+	const checkedAt = new Date().toISOString();
+
+	// 1. Gather container port mappings
+	const containerPortMap = new Map<number, string>();
+	try {
+		const psCmd = "docker ps -a --no-trunc --format '{{json .}}'";
+		const { stdout: psOut } = sid
+			? await execAsyncRemote(sid, psCmd)
+			: await execAsync(psCmd);
+
+		for (const line of psOut.trim().split("\n")) {
+			if (!line) continue;
+			try {
+				const item = JSON.parse(line);
+				const portsStr = item.Ports || "";
+				const containerName = item.Names || item.ID || "container";
+				// Parse e.g. 0.0.0.0:80->80/tcp or 5432/tcp
+				const portMatches = portsStr.matchAll(/(?:([0-9.]+):)?([0-9]+)->/g);
+				for (const match of portMatches) {
+					const hostPort = parseInt(match[2], 10);
+					if (!isNaN(hostPort)) {
+						containerPortMap.set(hostPort, containerName);
+					}
+				}
+			} catch {}
+		}
+	} catch (err) {
+		console.warn("Could not query docker ps for security inspection:", err);
+	}
+
+	// 2. Query open sockets and firewall
+	let rawSockets = "";
+	let firewallStatus: "active" | "inactive" | "unsupported" = "inactive";
+	let firewallDetails = "";
+
+	if (sid) {
+		try {
+			const cmd =
+				"ss -tulpn 2>/dev/null || netstat -tulpn 2>/dev/null; echo '===UFW==='; which ufw >/dev/null 2>&1 && ufw status 2>/dev/null || echo 'not-found'";
+			const { stdout } = await execAsyncRemote(sid, cmd);
+			const parts = stdout.split("===UFW===");
+			rawSockets = parts[0] || "";
+			const ufwOut = (parts[1] || "").trim();
+			if (ufwOut.includes("Status: active")) {
+				firewallStatus = "active";
+				firewallDetails = "Tường lửa UFW đang kích hoạt và bảo vệ hệ thống.";
+			} else if (ufwOut.includes("Status: inactive")) {
+				firewallStatus = "inactive";
+				firewallDetails = "Tường lửa UFW đang tắt. Khuyến nghị bật UFW để chặn quét cổng trái phép.";
+			} else {
+				firewallStatus = "unsupported";
+				firewallDetails = "Không phát hiện UFW (sử dụng iptables hoặc security group nhà cung cấp đám mây).";
+			}
+		} catch (err) {
+			console.warn("Could not query remote sockets:", err);
+		}
+	} else {
+		// Local host query
+		try {
+			const { stdout } = await execAsync(
+				"docker run --rm --net=host alpine:3.20 netstat -tulpn 2>/dev/null || netstat -tulpn 2>/dev/null || ss -tulpn 2>/dev/null",
+			);
+			rawSockets = stdout;
+		} catch {
+			// Fallback: build socket list from published container ports
+			for (const [port, container] of containerPortMap.entries()) {
+				rawSockets += `tcp 0 0 0.0.0.0:${port} 0.0.0.0:* LISTEN -\n`;
+			}
+		}
+
+		// Local firewall check
+		try {
+			const { stdout } = await execAsync("which ufw >/dev/null 2>&1 && ufw status 2>/dev/null || echo 'not-found'");
+			if (stdout.includes("Status: active")) {
+				firewallStatus = "active";
+				firewallDetails = "Tường lửa UFW đang kích hoạt.";
+			} else if (stdout.includes("Status: inactive")) {
+				firewallStatus = "inactive";
+				firewallDetails = "Tường lửa UFW đang tắt.";
+			} else {
+				firewallStatus = "unsupported";
+				firewallDetails = "UFW không được cài đặt (quản lý bởi cloud security group).";
+			}
+		} catch {
+			firewallStatus = "unsupported";
+		}
+	}
+
+	// 3. Parse listening sockets into structured items
+	const portMap = new Map<string, ListeningPortItem>();
+	const lines = rawSockets.trim().split("\n");
+
+	for (const line of lines) {
+		const parts = line.trim().split(/\s+/);
+		if (parts.length < 4) continue;
+		const rawProto = parts[0];
+		const localAddr = parts[3];
+		if (!rawProto || !localAddr) continue;
+		const proto = rawProto.toUpperCase();
+		if (proto !== "TCP" && proto !== "UDP") continue;
+
+		// Extract local address
+		const lastColon = localAddr.lastIndexOf(":");
+		if (lastColon === -1) continue;
+
+		const ip = localAddr.substring(0, lastColon);
+		const port = parseInt(localAddr.substring(lastColon + 1), 10);
+		if (isNaN(port)) continue;
+
+		const isPublic = ip === "0.0.0.0" || ip === "::" || ip === "*" || ip === ":::";
+		const cleanIp = isPublic ? "0.0.0.0" : ip;
+		const containerName = containerPortMap.get(port);
+
+		let service = containerName ? `Docker: ${containerName}` : "";
+		let processName = "";
+
+		// Detect standard system daemons
+		if (!service) {
+			if (port === 22) {
+				service = "OpenSSH Server";
+				processName = "sshd";
+			} else if (port === 53) {
+				service = "DNS Resolver";
+				processName = "systemd-resolve";
+			} else if (port === 323) {
+				service = "NTP Time Sync";
+				processName = "chronyd";
+			} else if (port === 2377 || port === 7946 || port === 4789) {
+				service = "Docker Swarm Mesh";
+				processName = "dockerd";
+			} else if (port === 80 || port === 443) {
+				service = "Web Ingress (Traefik)";
+				processName = "traefik";
+			} else if (port === 3000) {
+				service = "Meshdock Dashboard";
+				processName = "node";
+			} else {
+				service = `Port ${port} (${proto})`;
+			}
+		}
+
+		const { risk, desc } = classifyPortRisk(port, proto, isPublic, service);
+		const key = `${proto}:${port}`;
+
+		if (!portMap.has(key)) {
+			portMap.set(key, {
+				protocol: proto as "TCP" | "UDP",
+				port,
+				ip: cleanIp,
+				isPublic,
+				service,
+				containerName,
+				processName,
+				riskLevel: risk,
+				description: desc,
+			});
+		} else {
+			const existing = portMap.get(key)!;
+			if (isPublic && !existing.isPublic) {
+				existing.isPublic = true;
+				existing.ip = "0.0.0.0";
+				const updated = classifyPortRisk(port, proto, true, existing.service);
+				existing.riskLevel = updated.risk;
+				existing.description = updated.desc;
+			}
+		}
+	}
+
+	const ports = Array.from(portMap.values()).sort((a, b) => {
+		// Sort by risk priority: danger > warning > info > safe, then by port
+		const priority = { danger: 0, warning: 1, info: 2, safe: 3 };
+		if (priority[a.riskLevel] !== priority[b.riskLevel]) {
+			return priority[a.riskLevel] - priority[b.riskLevel];
+		}
+		return a.port - b.port;
+	});
+
+	const publicPortsCount = ports.filter((p) => p.isPublic).length;
+	const highRiskPortsCount = ports.filter((p) => p.riskLevel === "danger").length;
+
+	// Calculate security score (0 - 100)
+	let score = 100;
+	if (highRiskPortsCount > 0) score -= highRiskPortsCount * 25;
+	if (ports.some((p) => p.riskLevel === "warning")) score -= 10;
+	if (firewallStatus === "inactive") score -= 15;
+	score = Math.max(20, Math.min(100, score));
+
+	const recommendations: string[] = [];
+	if (highRiskPortsCount > 0) {
+		recommendations.push(
+			"Phát hiện cổng cơ sở dữ liệu mở công khai! Hãy đóng cổng trực tiếp trên host và chỉ cho phép truy cập qua mạng nội bộ Docker hoặc qua Traefik xác thực.",
+		);
+	}
+	if (ports.some((p) => p.port === 22 && p.isPublic)) {
+		recommendations.push(
+			"Cổng SSH 22 đang mở toàn bộ ra 0.0.0.0. Bạn nên dùng SSH Key thay cho mật khẩu và hạn chế dải IP quản trị.",
+		);
+	}
+	if (firewallStatus === "inactive") {
+		recommendations.push(
+			"Tường lửa UFW của VPS đang tắt. Khuyến nghị bật UFW ('ufw enable') để chặn việc mở cổng ngoài ý muốn.",
+		);
+	}
+	if (recommendations.length === 0) {
+		recommendations.push("Hạ tầng mạng và cổng mở của máy chủ đang ở mức an toàn cao.");
+	}
+
+	return {
+		checkedAt,
+		firewallStatus,
+		firewallDetails,
+		totalOpenPorts: ports.length,
+		publicPortsCount,
+		highRiskPortsCount,
+		ports,
+		securityScore: score,
+		recommendations,
+	};
+};

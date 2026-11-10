@@ -226,12 +226,12 @@ if [ "$BUILD_MONITORING" = true ]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 2. BUILD & PUSH DOKPLOY APP
+# 2. BUILD & PUSH MESHDOCK APP
 # ------------------------------------------------------------------------------
 if [ "$BUILD_DOKPLOY" = true ]; then
-    echo -e "${BLUE}[2/2] 🔨 Đang build Dokploy image (${NAMESPACE}/dokploy)...${NC}"
+    echo -e "${BLUE}[2/2] 🔨 Đang build Meshdock image (${NAMESPACE}/meshdock)...${NC}"
     
-    DOKPLOY_IMG="${NAMESPACE}/dokploy"
+    DOKPLOY_IMG="${NAMESPACE}/meshdock"
     
     if [ "$MULTI_ARCH" = true ]; then
         BUILDER=$(docker buildx create --use)
@@ -259,7 +259,7 @@ if [ "$BUILD_DOKPLOY" = true ]; then
             docker push "${DOKPLOY_IMG}:${VERSION}"
         fi
     fi
-    echo -e "${GREEN}      ✅ Hoàn tất Dokploy!${NC}\n"
+    echo -e "${GREEN}      ✅ Hoàn tất Meshdock!${NC}\n"
 fi
 
 # ------------------------------------------------------------------------------
@@ -271,11 +271,11 @@ echo -e "${BOLD}${GREEN}====================================================${NC
 
 if [ "$DO_PUSH" = true ]; then
     echo -e "Các image đã sẵn sàng trên Docker Hub của bạn:"
-    [ "$BUILD_DOKPLOY" = true ] && echo -e "  - ${CYAN}${NAMESPACE}/dokploy:latest${NC} và ${CYAN}${NAMESPACE}/dokploy:${VERSION}${NC}"
+    [ "$BUILD_DOKPLOY" = true ] && echo -e "  - ${CYAN}${NAMESPACE}/meshdock:latest${NC} và ${CYAN}${NAMESPACE}/meshdock:${VERSION}${NC}"
     [ "$BUILD_MONITORING" = true ] && echo -e "  - ${CYAN}${NAMESPACE}/monitoring:latest${NC} và ${CYAN}${NAMESPACE}/monitoring:${VERSION}${NC}"
     echo -e "\n${BOLD}Lệnh cập nhật nhanh trên VPS:${NC}"
     if [ "$BUILD_DOKPLOY" = true ]; then
-        echo -e "  ${YELLOW}docker service update --image ${NAMESPACE}/dokploy:latest dokploy${NC}"
+        echo -e "  ${YELLOW}docker service update --image ${NAMESPACE}/meshdock:latest dokploy${NC}"
     fi
 else
     echo -e "Các image đã được build và lưu trong local Docker daemon của bạn."

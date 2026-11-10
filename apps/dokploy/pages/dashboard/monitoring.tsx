@@ -11,6 +11,7 @@ import {
 	Loader2,
 	RefreshCw,
 	Server,
+	ShieldCheck,
 	Sparkles,
 } from "lucide-react";
 import type { GetServerSidePropsContext } from "next";
@@ -21,6 +22,7 @@ import { ContainerVitalsTable } from "@/components/dashboard/vitals/container-vi
 import { HealthScoreCard } from "@/components/dashboard/vitals/health-score-card";
 import { HostVitalsCard } from "@/components/dashboard/vitals/host-vitals-card";
 import { OptimizerDialog } from "@/components/dashboard/vitals/optimizer-dialog";
+import { SecurityInspectorCard } from "@/components/dashboard/vitals/security-inspector-card";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,7 +41,7 @@ const BASE_URL = "http://localhost:3001/metrics";
 const DEFAULT_TOKEN = "metrics";
 
 const MonitoringPage = () => {
-	const [activeTab, setActiveTab] = useState<"vitals" | "charts">("vitals");
+	const [activeTab, setActiveTab] = useState<"vitals" | "security" | "charts">("vitals");
 	const [selectedServerId, setSelectedServerId] = useState<string>("local");
 	const [pollInterval, setPollInterval] = useState<number | false>(10000);
 
@@ -77,18 +79,33 @@ const MonitoringPage = () => {
 		},
 	);
 
+	// Security & Port Inspector Query
+	const {
+		data: securityData,
+		isLoading: isSecurityLoading,
+		isRefetching: isSecurityRefetching,
+		refetch: refetchSecurity,
+	} = api.vitals.getSecurityInspection.useQuery(
+		{ serverId: serverIdQuery },
+		{
+			refetchInterval: pollInterval,
+			refetchOnWindowFocus: false,
+		},
+	);
+
 	// Legacy Prometheus monitoring query
 	const [toggleMonitoring] = useLocalStorage("monitoring-enabled", false);
 	const { data: monitoring } = api.user.getMetricsToken.useQuery(undefined, {
 		enabled: activeTab === "charts",
 	});
 
-	const isRefreshing = isHostRefetching || isContainersRefetching;
-	const isLoading = isHostLoading || isContainersLoading;
+	const isRefreshing = isHostRefetching || isContainersRefetching || isSecurityRefetching;
+	const isLoading = isHostLoading || isContainersLoading || isSecurityLoading;
 
 	const handleManualRefresh = () => {
 		refetchHost();
 		refetchContainers();
+		refetchSecurity();
 	};
 
 	return (
@@ -102,13 +119,13 @@ const MonitoringPage = () => {
 						</div>
 						<div>
 							<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-								System Vitals & Giám Sát VPS
+								System Vitals & Quản Trị Máy Chủ
 								<span className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-									Pro Max
+									Pro Max v1.0.0
 								</span>
 							</h1>
 							<p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-								Theo dõi thời gian thực tải CPU/RAM, dung lượng ổ đĩa, AI Health Score và trạng thái container.
+								Theo dõi sức khỏe phần cứng VPS, kích thước container, ma trận cổng mở và bảo mật tường lửa.
 							</p>
 						</div>
 					</div>
@@ -199,7 +216,7 @@ const MonitoringPage = () => {
 			{/* Mode Tabs */}
 			<Tabs
 				value={activeTab}
-				onValueChange={(val) => setActiveTab(val as "vitals" | "charts")}
+				onValueChange={(val) => setActiveTab(val as "vitals" | "security" | "charts")}
 				className="w-full space-y-6"
 			>
 				<div className="flex items-center justify-between">
@@ -212,10 +229,20 @@ const MonitoringPage = () => {
 							<span>System Vitals & Containers</span>
 						</TabsTrigger>
 						<TabsTrigger
+							value="security"
+							className="text-xs gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+						>
+							<ShieldCheck className="size-3.5 text-blue-500" />
+							<span>Kiểm Soát Cổng & Bảo Mật VPS</span>
+							{(securityData?.highRiskPortsCount ?? 0) > 0 && (
+								<span className="size-2 rounded-full bg-rose-500 animate-pulse" />
+							)}
+						</TabsTrigger>
+						<TabsTrigger
 							value="charts"
 							className="text-xs gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
 						>
-							<BarChart3 className="size-3.5 text-blue-500" />
+							<BarChart3 className="size-3.5 text-purple-500" />
 							<span>Biểu Đồ Lịch Sử</span>
 						</TabsTrigger>
 					</TabsList>
@@ -242,7 +269,16 @@ const MonitoringPage = () => {
 					/>
 				</TabsContent>
 
-				{/* TAB 2: HISTORICAL / PROMETHEUS TIME-SERIES CHARTS */}
+				{/* TAB 2: SECURITY & OPEN PORT INSPECTOR */}
+				<TabsContent value="security" className="space-y-6 mt-0">
+					<SecurityInspectorCard
+						security={securityData}
+						isLoading={isSecurityLoading}
+						onRefresh={handleManualRefresh}
+					/>
+				</TabsContent>
+
+				{/* TAB 3: HISTORICAL / PROMETHEUS TIME-SERIES CHARTS */}
 				<TabsContent value="charts" className="space-y-4 mt-0">
 					{toggleMonitoring ? (
 						<Card className="bg-card p-4 rounded-xl border border-border shadow-sm">

@@ -20,12 +20,12 @@ ENV NODE_ENV=production
 RUN pnpm --filter=@dokploy/server build
 RUN pnpm --filter=./apps/dokploy run build
 
-RUN pnpm --filter=./apps/dokploy --prod deploy --legacy /prod/dokploy
+RUN pnpm --filter=./apps/dokploy --prod deploy --legacy /prod/meshdock
 
-RUN cp -R /usr/src/app/apps/dokploy/.next /prod/dokploy/.next
-RUN cp -R /usr/src/app/apps/dokploy/dist /prod/dokploy/dist
+RUN cp -R /usr/src/app/apps/dokploy/.next /prod/meshdock/.next
+RUN cp -R /usr/src/app/apps/dokploy/dist /prod/meshdock/dist
 
-FROM base AS dokploy
+FROM base AS meshdock
 WORKDIR /app
 
 # Set production
@@ -34,15 +34,15 @@ ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y tini curl unzip zip apache2-utils iproute2 rsync git-lfs && git lfs install && rm -rf /var/lib/apt/lists/*
 
 # Copy only the necessary files
-COPY --from=build /prod/dokploy/.next ./.next
-COPY --from=build /prod/dokploy/dist ./dist
-COPY --from=build /prod/dokploy/next.config.mjs ./next.config.mjs
-COPY --from=build /prod/dokploy/public ./public
-COPY --from=build /prod/dokploy/package.json ./package.json
-COPY --from=build /prod/dokploy/drizzle ./drizzle
+COPY --from=build /prod/meshdock/.next ./.next
+COPY --from=build /prod/meshdock/dist ./dist
+COPY --from=build /prod/meshdock/next.config.mjs ./next.config.mjs
+COPY --from=build /prod/meshdock/public ./public
+COPY --from=build /prod/meshdock/package.json ./package.json
+COPY --from=build /prod/meshdock/drizzle ./drizzle
 COPY .env.production ./.env
-COPY --from=build /prod/dokploy/components.json ./components.json
-COPY --from=build /prod/dokploy/node_modules ./node_modules
+COPY --from=build /prod/meshdock/components.json ./components.json
+COPY --from=build /prod/meshdock/node_modules ./node_modules
 
 
 # Install docker

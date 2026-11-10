@@ -3,6 +3,7 @@ import {
 	getDetailedContainerVitals,
 	getHostVitals,
 	getRemoteDocker,
+	getSecurityInspection,
 	optimizeHostResources,
 } from "@dokploy/server";
 import { execAsync, execAsyncRemote } from "@dokploy/server/utils/process/execAsync";
@@ -69,6 +70,24 @@ export const vitalsRouter = createTRPCRouter({
 				resourceName: `optimize-${input.target}`,
 			});
 			return result;
+		}),
+
+	/**
+	 * Security & Open Port Matrix Inspector: scans listening ports, maps containers/services, and classifies risks
+	 */
+	getSecurityInspection: protectedProcedure
+		.input(
+			z
+				.object({
+					serverId: z.string().optional().nullable(),
+				})
+				.optional(),
+		)
+		.query(async ({ input, ctx }) => {
+			if (input?.serverId) {
+				await assertServerAccess(ctx.session, input.serverId);
+			}
+			return await getSecurityInspection(input?.serverId);
 		}),
 
 	/**
