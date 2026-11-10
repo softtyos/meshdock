@@ -411,15 +411,9 @@ export const stripeRouter = createTRPCRouter({
 		}),
 
 	canCreateMoreServers: withPermission("server", "create").query(
-		async ({ ctx }) => {
-			const user = await findUserById(ctx.user.ownerId);
-			const servers = await findServersByUserId(user.id);
-
-			if (!IS_CLOUD) {
-				return true;
-			}
-
-			return servers.length < user.serversQuantity;
+		async () => {
+			// Meshdock Enterprise: Unlimited server creation unlocked for all deployments
+			return true;
 		},
 	),
 

@@ -173,74 +173,10 @@ export const HandleServers = ({ serverId, children }: Props) => {
 						remotely.
 					</DialogDescription>
 				</DialogHeader>
-				<div>
-					<p className="text-primary text-sm font-medium">
-						You may need to purchase or rent a Virtual Private Server (VPS) to
-						proceed. We recommend using one of these heavily tested providers:
-					</p>
-					<ul className="list-inside list-disc pl-4 text-sm text-muted-foreground mt-4">
-						<li>
-							<a
-								href="https://www.hostinger.com/vps-hosting?REFERRALCODE=1SIUMAURICI97"
-								className="text-link underline"
-							>
-								Hostinger - Get 20% Discount
-							</a>
-						</li>
-						<li>
-							<a
-								href=" https://app.americancloud.com/register?ref=dokploy"
-								className="text-link underline"
-							>
-								American Cloud - Get $20 Credits
-							</a>
-						</li>
-						<li>
-							<a
-								href="https://m.do.co/c/db24efd43f35"
-								className="text-link underline"
-							>
-								DigitalOcean - Get $200 Credits
-							</a>
-						</li>
-						<li>
-							<a
-								href="https://hetzner.cloud/?ref=vou4fhxJ1W2D"
-								className="text-link underline"
-							>
-								Hetzner - Get €20 Credits
-							</a>
-						</li>
-						<li>
-							<a
-								href="https://www.vultr.com/?ref=9679828"
-								className="text-link underline"
-							>
-								Vultr
-							</a>
-						</li>
-						<li>
-							<a
-								href="https://www.linode.com/es/pricing/#compute-shared"
-								className="text-link underline"
-							>
-								Linode
-							</a>
-						</li>
-					</ul>
-					<AlertBlock className="mt-4 px-4">
-						You are free to use whatever provider, but we recommend to use one
-						of the above, to avoid issues.
-					</AlertBlock>
-				</div>
-				{!canCreateMoreServers && (
-					<AlertBlock type="warning" className="mt-4">
-						You cannot create more servers,{" "}
-						<Link href="/dashboard/settings/billing" className="text-primary">
-							Please upgrade your plan
-						</Link>
-					</AlertBlock>
-				)}
+				<AlertBlock className="mt-2 px-4">
+					Connect any Linux VPS (Ubuntu, Debian, Rocky, Alpine) to Mesh Fleet.
+					Both standalone Docker hosts and Docker Swarm cluster nodes are supported with auto-discovery.
+				</AlertBlock>
 				{isError && <AlertBlock type="error">{error?.message}</AlertBlock>}
 				<Form {...form}>
 					<form
@@ -447,7 +383,6 @@ export const HandleServers = ({ serverId, children }: Props) => {
 					<DialogFooter>
 						<Button
 							isLoading={isPending}
-							disabled={!canCreateMoreServers && !serverId}
 							form="hook-form-add-server"
 							type="submit"
 						>

@@ -65,17 +65,6 @@ export const ShowServers = () => {
 						<CardDescription>
 							Add servers to deploy your applications remotely.
 						</CardDescription>
-
-						{isCloud && (
-							<span
-								className="bg-linear-to-r cursor-pointer from-blue-600 via-green-500 to-indigo-400 inline-block text-transparent bg-clip-text text-sm"
-								onClick={() => {
-									router.push("/dashboard/settings/servers?success=true");
-								}}
-							>
-								Reset Onboarding
-							</span>
-						)}
 					</CardHeader>
 					<CardContent className="space-y-2 py-8 border-t">
 						{isPending ? (
@@ -134,40 +123,9 @@ export const ShowServers = () => {
 																	</div>
 																	<TooltipProvider>
 																		<div className="flex gap-2 mt-2 flex-wrap">
-																			{isCloud && (
-																				<>
-																					{server.serverStatus === "active" ? (
-																						<Badge variant="default">
-																							{server.serverStatus}
-																						</Badge>
-																					) : (
-																						<Tooltip delayDuration={0}>
-																							<TooltipTrigger asChild>
-																								<span className="inline-block">
-																									<Badge
-																										variant="destructive"
-																										className="cursor-help"
-																									>
-																										{server.serverStatus}
-																									</Badge>
-																								</span>
-																							</TooltipTrigger>
-																							<TooltipContent
-																								className="max-w-xs"
-																								side="bottom"
-																							>
-																								<p className="text-sm">
-																									This server is deactivated due
-																									to lack of payment. Please pay
-																									your invoice to reactivate it.
-																									If you think this is an error,
-																									please contact support.
-																								</p>
-																							</TooltipContent>
-																						</Tooltip>
-																					)}
-																				</>
-																			)}
+																			<Badge variant={server.serverStatus === "active" ? "default" : "secondary"}>
+																				{server.serverStatus}
+																			</Badge>
 																			<Badge
 																				variant={
 																					isBuildServer

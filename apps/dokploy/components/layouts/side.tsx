@@ -27,6 +27,7 @@ import {
 	Loader2,
 	LogIn,
 	type LucideIcon,
+	Network,
 	Package,
 	Palette,
 	ScrollText,
@@ -39,6 +40,7 @@ import {
 	User,
 	Users,
 	Vault,
+	Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -102,7 +104,6 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
-import { TrialBanner } from "../dashboard/billing/trial-banner";
 import { AddOrganization } from "../dashboard/organization/handle-organization";
 import { DialogAction } from "../shared/dialog-action";
 import { Logo } from "../shared/logo";
@@ -172,6 +173,18 @@ const MENU: Menu = {
 			title: "Home",
 			url: "/dashboard/home",
 			icon: House,
+		},
+		{
+			isSingle: true,
+			title: "Mesh Fleet",
+			url: "/dashboard/fleet",
+			icon: Network,
+		},
+		{
+			isSingle: true,
+			title: "Topology",
+			url: "/dashboard/topology",
+			icon: Workflow,
 		},
 		{
 			isSingle: true,
@@ -426,22 +439,6 @@ const MENU: Menu = {
 			icon: Bell,
 			// Only enabled for users with access to notifications
 			isEnabled: ({ permissions }) => !!permissions?.notification.read,
-		},
-		{
-			isSingle: true,
-			title: "Billing",
-			url: "/dashboard/settings/billing",
-			icon: CreditCard,
-			// Only enabled for owners in cloud environments
-			isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && isCloud),
-		},
-		{
-			isSingle: true,
-			title: "License",
-			url: "/dashboard/settings/license",
-			icon: Key,
-			// Only enabled for owners
-			isEnabled: ({ auth }) => !!(auth?.role === "owner"),
 		},
 		{
 			isSingle: true,
@@ -1255,7 +1252,6 @@ export default function Page({ children }: Props) {
 				<SidebarRail />
 			</Sidebar>
 			<SidebarInset>
-				{isCloud === true && <TrialBanner />}
 				{!includesProjects && (
 					<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
 						<div className="flex items-center justify-between w-full px-4">
