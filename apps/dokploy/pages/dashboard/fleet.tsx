@@ -1,5 +1,6 @@
 import { validateRequest } from "@dokploy/server/lib/auth";
 import { createServerSideHelpers } from "@trpc/react-query/server";
+import dynamic from "next/dynamic";
 import {
 	Activity,
 	LayoutGrid,
@@ -12,11 +13,6 @@ import {
 import type { GetServerSidePropsContext } from "next";
 import React, { type ReactElement, useState } from "react";
 import superjson from "superjson";
-import { FleetKpis } from "@/components/dashboard/fleet/fleet-kpis";
-import { FleetMatrix } from "@/components/dashboard/fleet/fleet-matrix";
-import { FleetNodeDrawer } from "@/components/dashboard/fleet/fleet-node-drawer";
-import { FleetTelemetry } from "@/components/dashboard/fleet/fleet-telemetry";
-import { SwarmGlobalAgentModal } from "@/components/dashboard/fleet/swarm-global-agent-modal";
 import { HandleServers } from "@/components/dashboard/settings/servers/handle-servers";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -24,6 +20,27 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { appRouter } from "@/server/api/root";
 import type { FleetNodeInfo } from "@/server/api/routers/fleet";
 import { api } from "@/utils/api";
+
+const FleetKpis = dynamic(
+	() => import("@/components/dashboard/fleet/fleet-kpis").then((m) => m.FleetKpis),
+	{ ssr: false },
+);
+const FleetMatrix = dynamic(
+	() => import("@/components/dashboard/fleet/fleet-matrix").then((m) => m.FleetMatrix),
+	{ ssr: false },
+);
+const FleetNodeDrawer = dynamic(
+	() => import("@/components/dashboard/fleet/fleet-node-drawer").then((m) => m.FleetNodeDrawer),
+	{ ssr: false },
+);
+const FleetTelemetry = dynamic(
+	() => import("@/components/dashboard/fleet/fleet-telemetry").then((m) => m.FleetTelemetry),
+	{ ssr: false },
+);
+const SwarmGlobalAgentModal = dynamic(
+	() => import("@/components/dashboard/fleet/swarm-global-agent-modal").then((m) => m.SwarmGlobalAgentModal),
+	{ ssr: false },
+);
 
 const FleetPage = () => {
 	const utils = api.useUtils();

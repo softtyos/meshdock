@@ -1,5 +1,6 @@
 import { validateRequest } from "@dokploy/server/lib/auth";
 import { createServerSideHelpers } from "@trpc/react-query/server";
+import dynamic from "next/dynamic";
 import {
 	Database,
 	Layers,
@@ -12,12 +13,19 @@ import {
 import type { GetServerSidePropsContext } from "next";
 import React, { type ReactElement } from "react";
 import superjson from "superjson";
-import { TopologyCanvas } from "@/components/dashboard/topology/topology-canvas";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { appRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
+
+const TopologyCanvas = dynamic(
+	() =>
+		import("@/components/dashboard/topology/topology-canvas").then(
+			(m) => m.TopologyCanvas,
+		),
+	{ ssr: false },
+);
 
 const TopologyPage = () => {
 	const {
