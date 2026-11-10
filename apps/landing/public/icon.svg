@@ -1,44 +1,46 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="meshdockGrad" x1="91.5" y1="90" x2="420.5" y2="420" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#06B6D4"/>
-      <stop offset="50%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#6366F1"/>
+    <linearGradient id="md_bladeLeft" x1="88" y1="96" x2="192" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
     </linearGradient>
-    <linearGradient id="nodeGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#818CF8"/>
+    <linearGradient id="md_bladeRight" x1="424" y1="96" x2="320" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#047857" />
     </linearGradient>
-    <filter id="glow" x="60" y="35" width="392" height="442" filterUnits="userSpaceOnUse">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
+    <linearGradient id="md_chevronTop" x1="192" y1="96" x2="320" y2="224" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6EE7B7" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="md_cubeTop" x1="192" y1="244" x2="320" y2="332" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A7F3D0" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="md_cubeLeft" x1="192" y1="288" x2="256" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#064E3B" />
+    </linearGradient>
+    <linearGradient id="md_cubeRight" x1="256" y1="332" x2="320" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
   </defs>
 
-  <!-- Dock Foundation & Geometric Hexagon Grid -->
-  <path d="M91.5 351 L256 446 L420.5 351" stroke="#64748B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
-  <path d="M256 256 L256 446" stroke="#64748B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
-  <path d="M91.5 161 L256 66 L420.5 161" stroke="#64748B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
-  <path d="M256 66 L256 256" stroke="#64748B" stroke-width="18" stroke-dasharray="10 10" stroke-linecap="round" opacity="0.35"/>
-
-  <!-- Main MESH Ribbon ('M' Network Architecture) -->
-  <path d="M91.5 351 L91.5 161 L256 256 L420.5 161 L420.5 351" stroke="url(#meshdockGrad)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-
-  <!-- Topology Node Points -->
-  <circle cx="256" cy="66" r="18" fill="#94A3B8"/>
-  <circle cx="256" cy="446" r="18" fill="#94A3B8"/>
-
-  <!-- Core Active Server Nodes -->
-  <circle cx="91.5" cy="351" r="24" fill="url(#nodeGrad)"/>
-  <circle cx="91.5" cy="161" r="26" fill="url(#nodeGrad)"/>
-  <circle cx="256" cy="256" r="28" fill="#3B82F6"/>
-  <circle cx="420.5" cy="161" r="26" fill="url(#nodeGrad)"/>
-  <circle cx="420.5" cy="351" r="24" fill="url(#nodeGrad)"/>
-
-  <!-- Hub Core Status Highlights -->
-  <circle cx="256" cy="256" r="12" fill="#FFFFFF"/>
-  <circle cx="91.5" cy="161" r="10" fill="#FFFFFF"/>
-  <circle cx="420.5" cy="161" r="10" fill="#FFFFFF"/>
-  <circle cx="91.5" cy="351" r="9" fill="#FFFFFF" opacity="0.9"/>
-  <circle cx="420.5" cy="351" r="9" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Left Pillar Blade (Node Tower 1) -->
+  <path d="M 88 384 L 88 156 L 192 96 L 192 324 Z" fill="url(#md_bladeLeft)" />
+  
+  <!-- Right Pillar Blade (Node Tower 2) -->
+  <path d="M 424 384 L 424 156 L 320 96 L 320 324 Z" fill="url(#md_bladeRight)" />
+  
+  <!-- Top Central Chevron (Bridging the M) -->
+  <path d="M 192 96 L 256 152 L 320 96 L 256 224 Z" fill="url(#md_chevronTop)" />
+  
+  <!-- Central Docked Container Cube -->
+  <path d="M 256 244 L 320 288 L 256 332 L 192 288 Z" fill="url(#md_cubeTop)" />
+  <path d="M 192 288 L 256 332 L 256 416 L 192 372 Z" fill="url(#md_cubeLeft)" />
+  <path d="M 256 332 L 320 288 L 320 372 L 256 416 Z" fill="url(#md_cubeRight)" />
+  
+  <!-- Core Signal Indicator -->
+  <circle cx="256" cy="288" r="8" fill="#FFFFFF" />
+  <circle cx="256" cy="288" r="14" stroke="#FFFFFF" stroke-width="2" opacity="0.6" />
 </svg>

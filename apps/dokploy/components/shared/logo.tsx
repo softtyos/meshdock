@@ -35,101 +35,115 @@ export const Logo = ({
 		>
 			<defs>
 				<linearGradient
-					id="meshdockComponentGrad"
-					x1="91.5"
-					y1="90"
-					x2="420.5"
-					y2="420"
+					id="dokploy_bladeLeft"
+					x1="88"
+					y1="96"
+					x2="192"
+					y2="384"
 					gradientUnits="userSpaceOnUse"
 				>
-					<stop offset="0%" stopColor="#06B6D4" />
-					<stop offset="50%" stopColor="#3B82F6" />
-					<stop offset="100%" stopColor="#6366F1" />
+					<stop offset="0%" stopColor="#34D399" />
+					<stop offset="100%" stopColor="#059669" />
 				</linearGradient>
 				<linearGradient
-					id="meshdockComponentNode"
-					x1="0"
-					y1="0"
-					x2="1"
-					y2="1"
+					id="dokploy_bladeRight"
+					x1="424"
+					y1="96"
+					x2="320"
+					y2="384"
+					gradientUnits="userSpaceOnUse"
 				>
-					<stop offset="0%" stopColor="#38BDF8" />
-					<stop offset="100%" stopColor="#818CF8" />
+					<stop offset="0%" stopColor="#10B981" />
+					<stop offset="100%" stopColor="#047857" />
+				</linearGradient>
+				<linearGradient
+					id="dokploy_chevronTop"
+					x1="192"
+					y1="96"
+					x2="320"
+					y2="224"
+					gradientUnits="userSpaceOnUse"
+				>
+					<stop offset="0%" stopColor="#6EE7B7" />
+					<stop offset="100%" stopColor="#10B981" />
+				</linearGradient>
+				<linearGradient
+					id="dokploy_cubeTop"
+					x1="192"
+					y1="244"
+					x2="320"
+					y2="332"
+					gradientUnits="userSpaceOnUse"
+				>
+					<stop offset="0%" stopColor="#A7F3D0" />
+					<stop offset="100%" stopColor="#34D399" />
+				</linearGradient>
+				<linearGradient
+					id="dokploy_cubeLeft"
+					x1="192"
+					y1="288"
+					x2="256"
+					y2="416"
+					gradientUnits="userSpaceOnUse"
+				>
+					<stop offset="0%" stopColor="#059669" />
+					<stop offset="100%" stopColor="#064E3B" />
+				</linearGradient>
+				<linearGradient
+					id="dokploy_cubeRight"
+					x1="256"
+					y1="332"
+					x2="320"
+					y2="416"
+					gradientUnits="userSpaceOnUse"
+				>
+					<stop offset="0%" stopColor="#10B981" />
+					<stop offset="100%" stopColor="#047857" />
 				</linearGradient>
 			</defs>
 
-			{/* Dock Foundation Hexagon */}
+			{/* Left Pillar Blade */}
 			<path
-				d="M91.5 351 L256 446 L420.5 351"
-				stroke="currentColor"
-				strokeWidth="22"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				className="opacity-30"
-			/>
-			<path
-				d="M256 256 L256 446"
-				stroke="currentColor"
-				strokeWidth="22"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				className="opacity-30"
-			/>
-			<path
-				d="M91.5 161 L256 66 L420.5 161"
-				stroke="currentColor"
-				strokeWidth="22"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				className="opacity-30"
-			/>
-			<path
-				d="M256 66 L256 256"
-				stroke="currentColor"
-				strokeWidth="18"
-				strokeDasharray="10 10"
-				strokeLinecap="round"
-				className="opacity-25"
+				d="M 88 384 L 88 156 L 192 96 L 192 324 Z"
+				fill="url(#dokploy_bladeLeft)"
 			/>
 
-			{/* Main Mesh Ribbon ('M' Network Architecture) */}
+			{/* Right Pillar Blade */}
 			<path
-				d="M91.5 351 L91.5 161 L256 256 L420.5 161 L420.5 351"
-				stroke="url(#meshdockComponentGrad)"
-				strokeWidth="42"
-				strokeLinecap="round"
-				strokeLinejoin="round"
+				d="M 424 384 L 424 156 L 320 96 L 320 324 Z"
+				fill="url(#dokploy_bladeRight)"
 			/>
 
-			{/* Passive Top/Bottom Node Points */}
+			{/* Top Central Chevron */}
+			<path
+				d="M 192 96 L 256 152 L 320 96 L 256 224 Z"
+				fill="url(#dokploy_chevronTop)"
+			/>
+
+			{/* Central Docked Container Cube */}
+			<path
+				d="M 256 244 L 320 288 L 256 332 L 192 288 Z"
+				fill="url(#dokploy_cubeTop)"
+			/>
+			<path
+				d="M 192 288 L 256 332 L 256 416 L 192 372 Z"
+				fill="url(#dokploy_cubeLeft)"
+			/>
+			<path
+				d="M 256 332 L 320 288 L 320 372 L 256 416 Z"
+				fill="url(#dokploy_cubeRight)"
+			/>
+
+			{/* Core Signal Indicator */}
+			<circle cx="256" cy="288" r="8" fill="#FFFFFF" />
 			<circle
 				cx="256"
-				cy="66"
-				r="18"
-				fill="currentColor"
-				className="opacity-40"
+				cy="288"
+				r="14"
+				stroke="#FFFFFF"
+				strokeWidth="2"
+				opacity="0.6"
 			/>
-			<circle
-				cx="256"
-				cy="446"
-				r="18"
-				fill="currentColor"
-				className="opacity-40"
-			/>
-
-			{/* Active Server Nodes */}
-			<circle cx="91.5" cy="351" r="24" fill="url(#meshdockComponentNode)" />
-			<circle cx="91.5" cy="161" r="26" fill="url(#meshdockComponentNode)" />
-			<circle cx="256" cy="256" r="28" fill="#3B82F6" />
-			<circle cx="420.5" cy="161" r="26" fill="url(#meshdockComponentNode)" />
-			<circle cx="420.5" cy="351" r="24" fill="url(#meshdockComponentNode)" />
-
-			{/* Center Core Highlights */}
-			<circle cx="256" cy="256" r="12" fill="#FFFFFF" />
-			<circle cx="91.5" cy="161" r="10" fill="#FFFFFF" />
-			<circle cx="420.5" cy="161" r="10" fill="#FFFFFF" />
-			<circle cx="91.5" cy="351" r="9" fill="#FFFFFF" opacity="0.9" />
-			<circle cx="420.5" cy="351" r="9" fill="#FFFFFF" opacity="0.9" />
 		</svg>
 	);
 };
