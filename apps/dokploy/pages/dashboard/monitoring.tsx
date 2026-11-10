@@ -26,18 +26,6 @@ const Dashboard = () => {
 	const { data: monitoring, isPending } = api.user.getMetricsToken.useQuery();
 	return (
 		<div className="space-y-4 pb-10">
-			{/* <AlertBlock>
-				You are watching the <strong>Free</strong> plan.{" "}
-				<a
-					href="https://dokploy.com#pricing"
-					target="_blank"
-					className="underline"
-					rel="noreferrer"
-				>
-					Upgrade
-				</a>{" "}
-				to get more features.
-			</AlertBlock> */}
 			{isPending ? (
 				<Card className="bg-sidebar  p-2.5 rounded-xl  mx-auto  items-center">
 					<div className="rounded-xl bg-background flex shadow-md px-4 w-full min-h-[50vh] justify-center items-center text-muted-foreground">

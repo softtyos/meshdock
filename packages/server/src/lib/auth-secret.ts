@@ -18,8 +18,7 @@ BETTER_AUTH_SECRET is not set via environment variable or Docker secret.
 Falling back to the insecure hardcoded default — this is a CRITICAL SECURITY RISK.
 This mode WILL BE REMOVED in a future release.
 
-Please migrate to Docker Secrets:
-  curl -sSL https://dokploy.com/security/0.29.3.sh | bash
+Please configure BETTER_AUTH_SECRET in your environment or via Docker Secrets.
 `);
 	}
 	return HARDCODED_LEGACY_SECRET;
