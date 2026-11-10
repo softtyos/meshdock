@@ -5,7 +5,7 @@ import {
 } from "@dokploy/server";
 import { validateRequest } from "@dokploy/server/lib/auth";
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import { Fingerprint } from "lucide-react";
+import { ArrowRight, Fingerprint, Sparkles } from "lucide-react";
 import type { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -312,6 +312,16 @@ export default function Home({ IS_CLOUD, enforceSSO }: Props) {
 	return (
 		<>
 			<div className="flex flex-col space-y-2 text-center">
+				<div className="flex justify-center mb-1">
+					<Link
+						href="/landing"
+						className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-medium transition-all"
+					>
+						<Sparkles className="size-3 text-cyan-400 animate-pulse" />
+						<span>Explore Meshdock Features &amp; Topology</span>
+						<ArrowRight className="size-3" />
+					</Link>
+				</div>
 				<h1 className="text-2xl font-semibold tracking-tight">
 					<div className="flex flex-row items-center justify-center gap-2">
 						<Logo
@@ -590,6 +600,19 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 			redirect: {
 				permanent: false,
 				destination: "/dashboard/home",
+			},
+		};
+	}
+
+	const host = context.req.headers.host;
+	const isMeshdockHost = host?.startsWith("meshdock.softty.net");
+	const wantsAuth = "auth" in context.query || "error" in context.query;
+
+	if (isMeshdockHost && !wantsAuth) {
+		return {
+			redirect: {
+				permanent: false,
+				destination: "/landing",
 			},
 		};
 	}
