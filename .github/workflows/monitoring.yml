@@ -113,17 +113,9 @@ jobs:
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
 
-            docker buildx imagetools create -t softtynet/agent:${TAG} \
-              ${IMAGE_NAME}:${TAG}-amd64 \
-              ${IMAGE_NAME}:${TAG}-arm64
-
           elif [ "$GITHUB_REF" = "refs/heads/canary" ]; then
             TAG="canary"
             docker buildx imagetools create -t ${IMAGE_NAME}:${TAG} \
-              ${IMAGE_NAME}:${TAG}-amd64 \
-              ${IMAGE_NAME}:${TAG}-arm64
-
-            docker buildx imagetools create -t softtynet/agent:${TAG} \
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
 
