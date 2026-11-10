@@ -44,9 +44,45 @@ Whether you run a fleet of independent VPS nodes, bare-metal servers, or Docker 
 
 ## 🚀 Quick Start
 
-### Self-Hosted Installation
+### 1-Line Installation (Fresh Server or VPS)
 
-To set up Meshdock on a clean Ubuntu/Debian server or VPS (requires Docker installed):
+To deploy Meshdock on a clean Ubuntu/Debian server or VPS (automatically provisions Docker, Swarm, and Meshdock Controller):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/softtyos/meshdock/main/install.sh | bash
+```
+
+---
+
+## 🔄 Migrating from Dokploy to Meshdock (Zero-Downtime)
+
+If you already have a running **Dokploy** instance, you can seamlessly upgrade to **Meshdock v1.0.0** without losing any data, databases, domain routes, or restarting user applications.
+
+### Option A: 1-Line Automated Migration Script
+
+Run this command directly on your Dokploy server terminal (or via SSH):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/softtyos/meshdock/main/scripts/migrate-from-dokploy.sh | bash
+```
+
+This automated script will:
+1. Safely snapshot your PostgreSQL database and backup `/etc/dokploy` to `/root`.
+2. Pull the official multi-architecture images `softtynet/meshdock:latest` and `softtynet/meshdock-agent:latest`.
+3. Perform an in-place Swarm service upgrade so all user apps and databases remain online 24/7.
+4. Auto-migrate the database schema to v1.0.0 and verify health.
+
+### Option B: AI Agent Guided Migration (Antigravity, Claude Code, Cursor)
+
+If you use an AI coding assistant connected to your server, simply provide the structured prompt from [MIGRATION.md](MIGRATION.md). The AI Agent will inspect the server environment, perform pre-flight checks, backup database state, execute the in-place service update, and verify health with automatic rollback capabilities.
+
+👉 See **[MIGRATION.md](MIGRATION.md)** for the complete AI Agent Prompt & Manual step-by-step documentation.
+
+---
+
+### Local Development Setup
+
+To run Meshdock locally for contributing or plugin development:
 
 ```bash
 # Clone the repository
