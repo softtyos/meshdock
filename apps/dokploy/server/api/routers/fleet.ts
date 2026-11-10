@@ -450,7 +450,7 @@ export const fleetRouter = createTRPCRouter({
 
 services:
   meshdock-agent:
-    image: ghcr.io/dokploy/dokploy-monitoring:latest
+    image: softtynet/monitoring:latest
     deploy:
       mode: global
       restart_policy:
@@ -477,7 +477,7 @@ networks:
   --mount type=bind,src=/sys,dst=/sys,ro \\
   --mount type=bind,src=/proc,dst=/proc,ro \\
   --network dokploy-network \\
-  ghcr.io/dokploy/dokploy-monitoring:latest`;
+  softtynet/monitoring:latest`;
 
 		return {
 			composeYaml,
