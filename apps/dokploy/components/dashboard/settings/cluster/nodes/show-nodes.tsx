@@ -69,7 +69,7 @@ export const ShowNodes = ({ serverId }: Props) => {
 							</CardTitle>
 							<CardDescription>Add nodes to your cluster</CardDescription>
 						</div>
-						{haveAtLeastOneRegistry && permissions?.server.create && (
+						{permissions?.server.create && (
 							<div className="flex flex-row gap-2">
 								<AddNode serverId={serverId} />
 							</div>
@@ -80,7 +80,7 @@ export const ShowNodes = ({ serverId }: Props) => {
 							<div className="flex items-center justify-center w-full h-[40vh]">
 								<Loader2 className="size-8 animate-spin text-muted-foreground" />
 							</div>
-						) : haveAtLeastOneRegistry ? (
+						) : (
 							<div className="grid md:grid-cols-1 gap-4">
 								<Table>
 									<TableCaption>
@@ -182,33 +182,15 @@ export const ShowNodes = ({ serverId }: Props) => {
 										})}
 									</TableBody>
 								</Table>
-							</div>
-						) : (
-							<div className="flex flex-col items-center gap-3">
-								<LockIcon className="size-8 text-muted-foreground" />
-								<div className="flex flex-row gap-2">
-									<span className="text-base text-muted-foreground ">
-										To add nodes to your cluster, you need to configure at least
-										one registry.
-									</span>
-									<TooltipProvider delayDuration={0}>
-										<Tooltip>
-											<TooltipTrigger className="self-center">
-												<HelpCircle className="size-5 text-muted-foreground " />
-											</TooltipTrigger>
-											<TooltipContent>
-												Nodes need a registry to pull images from.
-											</TooltipContent>
-										</Tooltip>
-									</TooltipProvider>
-								</div>
 
-								<ul className="list-disc list-inside text-sm text-muted-foreground border p-4 rounded-lg flex flex-col gap-1.5 mt-2.5">
-									<li>
-										<strong>Docker Registry:</strong> Use custom registries like
-										Docker Hub, DigitalOcean Registry, etc.
-									</li>
-								</ul>
+								{!haveAtLeastOneRegistry && (
+									<div className="flex items-center gap-2 p-3 text-xs rounded-lg border bg-muted/40 text-muted-foreground mt-2">
+										<HelpCircle className="size-4 shrink-0 text-primary" />
+										<span>
+											Lưu ý: Bạn có thể thêm Registry tùy chỉnh (Docker Hub, GHCR...) trong cài đặt nếu cần triển khai image từ kho riêng tư.
+										</span>
+									</div>
+								)}
 							</div>
 						)}
 					</CardContent>

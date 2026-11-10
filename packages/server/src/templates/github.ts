@@ -51,11 +51,14 @@ interface TemplateMetadata {
 	tags: string[];
 }
 
+const DEFAULT_TEMPLATES_URL =
+	process.env.TEMPLATES_URL || "https://templates.dokploy.com";
+
 /**
  * Fetches the list of available templates from meta.json
  */
 export async function fetchTemplatesList(
-	baseUrl = "https://templates.dokploy.com",
+	baseUrl = DEFAULT_TEMPLATES_URL,
 ): Promise<TemplateMetadata[]> {
 	const response = await providerFetch(`${baseUrl}/meta.json`, {
 		signal: AbortSignal.timeout(10000),
@@ -86,7 +89,7 @@ const LOGO_MIME_TYPES: Record<string, string> = {
 
 export async function fetchTemplateLogo(
 	templateId: string,
-	baseUrl = "https://templates.dokploy.com",
+	baseUrl = DEFAULT_TEMPLATES_URL,
 ): Promise<string | null> {
 	try {
 		const templates = await fetchTemplatesList(baseUrl);
@@ -123,7 +126,7 @@ export async function fetchTemplateLogo(
  */
 export async function fetchTemplateFiles(
 	templateId: string,
-	baseUrl = "https://templates.dokploy.com",
+	baseUrl = DEFAULT_TEMPLATES_URL,
 ): Promise<{ config: CompleteTemplate; dockerCompose: string }> {
 	const timeout = AbortSignal.timeout(10000);
 	const [templateYmlResponse, dockerComposeResponse] = await Promise.all([

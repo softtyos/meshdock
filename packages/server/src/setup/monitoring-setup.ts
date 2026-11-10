@@ -46,6 +46,21 @@ const deployMonitoringService = async (
 	try {
 		const service = docker.getService(serviceName);
 		const inspect = await service.inspect();
+
+		const currentIsGlobal = !!inspect.Spec?.Mode?.Global;
+		const targetIsGlobal = !!settings.Mode?.Global;
+
+		if (currentIsGlobal !== targetIsGlobal) {
+			console.log(
+				`Recreating ${serviceName} to change mode from ${currentIsGlobal ? "global" : "replicated"} to ${targetIsGlobal ? "global" : "replicated"}`,
+			);
+			await service.remove();
+			await new Promise((r) => setTimeout(r, 2000));
+			await docker.createService(settings);
+			console.log("Monitoring Service Created (mode updated) ✅");
+			return;
+		}
+
 		await service.update({
 			version: Number.parseInt(inspect.Version.Index),
 			...settings,
@@ -240,5 +255,106 @@ export const setupWebMonitoring = async () => {
 		"mkdir -p /etc/dokploy/monitoring && touch /etc/dokploy/monitoring/monitoring.db",
 	);
 	await pullImage(imageName);
+	await deployMonitoringService(docker, serviceName, settings);
+};
+
+export const setupGlobalSwarmAgent = async (serverId?: string) => {
+	const webServerSettings = await getWebServerSettings();
+
+	const serviceName = "dokploy-monitoring";
+	const imageName = getMonitoringImage();
+	const port = webServerSettings?.metricsConfig?.server?.port || 4500;
+	const safeMetricsConfig = {
+		server: {
+			refreshRate: webServerSettings?.metricsConfig?.server?.refreshRate ?? 20,
+			port: port,
+			token: webServerSettings?.metricsConfig?.server?.token || "metrics",
+			cronJob: webServerSettings?.metricsConfig?.server?.cronJob || "0 0 * * *",
+			retentionDays: webServerSettings?.metricsConfig?.server?.retentionDays ?? 7,
+			thresholds: webServerSettings?.metricsConfig?.server?.thresholds ?? { cpu: 0, memory: 0 },
+		},
+		containers: {
+			refreshRate: webServerSettings?.metricsConfig?.containers?.refreshRate ?? 20,
+			services: {
+				include: webServerSettings?.metricsConfig?.containers?.services?.include ?? [],
+				exclude: webServerSettings?.metricsConfig?.containers?.services?.exclude ?? [],
+			},
+		},
+	};
+
+	const settings: CreateServiceOptions = {
+		Name: serviceName,
+		TaskTemplate: {
+			ContainerSpec: {
+				Image: imageName,
+				Env: [
+					`METRICS_CONFIG=${JSON.stringify(safeMetricsConfig)}`,
+				],
+				Mounts: [
+					{
+						Type: "bind",
+						Source: "/var/run/docker.sock",
+						Target: "/var/run/docker.sock",
+						ReadOnly: true,
+					},
+					{
+						Type: "bind",
+						Source: "/sys",
+						Target: "/host/sys",
+						ReadOnly: true,
+					},
+					{
+						Type: "bind",
+						Source: "/etc/os-release",
+						Target: "/etc/os-release",
+						ReadOnly: true,
+					},
+					{
+						Type: "bind",
+						Source: "/proc",
+						Target: "/host/proc",
+						ReadOnly: true,
+					},
+					{
+						Type: "bind",
+						Source: "/etc/dokploy/monitoring/monitoring.db",
+						Target: "/app/monitoring.db",
+					},
+				],
+			},
+			Networks: [{ Target: "dokploy-network" }],
+			RestartPolicy: {
+				Condition: "any",
+			},
+		},
+		Mode: {
+			Global: {},
+		},
+		EndpointSpec: {
+			Ports: [
+				{
+					TargetPort: port,
+					PublishedPort: port,
+					Protocol: "tcp",
+					PublishMode: "host",
+				},
+			],
+		},
+	};
+
+	const docker = await getRemoteDocker(serverId);
+
+	if (serverId) {
+		await execAsyncRemote(
+			serverId,
+			"mkdir -p /etc/dokploy/monitoring && touch /etc/dokploy/monitoring/monitoring.db",
+		);
+		await pullRemoteImage(imageName, serverId);
+	} else {
+		await execAsync(
+			"mkdir -p /etc/dokploy/monitoring && touch /etc/dokploy/monitoring/monitoring.db",
+		);
+		await pullImage(imageName);
+	}
 	await deployMonitoringService(docker, serviceName, settings);
 };
