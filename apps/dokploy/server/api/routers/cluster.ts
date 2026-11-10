@@ -177,7 +177,7 @@ export const clusterRouter = createTRPCRouter({
 					mode: isGlobal ? ("global" as const) : ("replicated" as const),
 					totalNodes: nodes.length,
 					runningNodes: runningTasks.length,
-					image: inspect.Spec?.TaskTemplate?.ContainerSpec?.Image || "softtynet/monitoring:latest",
+					image: inspect.Spec?.TaskTemplate?.ContainerSpec?.Image || "softtynet/meshdock-agent:latest",
 					updatedAt: inspect.UpdatedAt,
 				};
 			} catch {

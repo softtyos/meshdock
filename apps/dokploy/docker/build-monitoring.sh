@@ -9,7 +9,7 @@ else
     TAG="latest"
 fi
 
-IMAGE_NAME=${DOCKER_MONITORING_IMAGE:-softtynet/monitoring}
+IMAGE_NAME=${DOCKER_MONITORING_IMAGE:-softtynet/meshdock-agent}
 BUILDER=$(docker buildx create --use)
 
 # Navigate to repo root if run from inside apps/dokploy

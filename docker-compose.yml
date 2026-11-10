@@ -17,7 +17,7 @@ services:
       - redis
 
   monitoring:
-    image: softtynet/monitoring:latest
+    image: softtynet/meshdock-agent:latest
     container_name: dokploy-monitoring
     restart: unless-stopped
     ports:

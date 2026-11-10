@@ -12,10 +12,10 @@ const getMonitoringImage = () => {
 	}
 
 	if (getDokployImageTag() === "canary") {
-		return "softtynet/monitoring:canary";
+		return "softtynet/meshdock-agent:canary";
 	}
 
-	return "softtynet/monitoring:latest";
+	return "softtynet/meshdock-agent:latest";
 };
 
 // Swarm tasks are dokploy-monitoring.<slot>.<id>, so this only matches the
