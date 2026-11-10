@@ -139,7 +139,7 @@ const FleetPage = () => {
 export default FleetPage;
 
 FleetPage.getLayout = (page: ReactElement) => {
-	return <DashboardLayout>{page}</DashboardLayout>;
+	return <DashboardLayout metaName="Mesh Fleet">{page}</DashboardLayout>;
 };
 
 export async function getServerSideProps(

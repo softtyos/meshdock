@@ -190,13 +190,13 @@ export const FleetNodeDrawer = ({
 					{/* Quick Actions */}
 					<div className="pt-2 border-t flex flex-wrap gap-2">
 						{node.serverId ? (
-							<TerminalModal serverId={node.serverId}>
+							<TerminalModal serverId={node.serverId} asButton>
 								<Button className="gap-2">
 									<Terminal className="h-4 w-4" /> Open SSH Terminal
 								</Button>
 							</TerminalModal>
 						) : node.isLocal ? (
-							<TerminalModal serverId="local">
+							<TerminalModal serverId="local" asButton>
 								<Button className="gap-2">
 									<Terminal className="h-4 w-4" /> Open Host Terminal
 								</Button>

@@ -111,7 +111,7 @@ export const OnboardingWizard = ({ onClose }: Props) => {
 							<div className="flex items-center gap-2.5 text-zinc-50 [&_path]:!fill-white [&_path]:!stroke-white">
 								<Logo className="size-7" />
 								<span className="text-lg font-semibold tracking-tight">
-									Dokploy
+									Meshdock
 								</span>
 							</div>
 							{!isLastVisible && (
@@ -277,7 +277,7 @@ export const OnboardingWizard = ({ onClose }: Props) => {
 					<DialogHeader>
 						<DialogTitle>Skip onboarding?</DialogTitle>
 						<DialogDescription>
-							If this is your first time using Dokploy, we recommend going
+							If this is your first time using Meshdock, we recommend going
 							through these steps – it only takes a couple of minutes and gives
 							you a feel for how projects, servers, and deployments fit
 							together.

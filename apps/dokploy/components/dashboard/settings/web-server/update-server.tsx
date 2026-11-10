@@ -155,7 +155,7 @@ export const UpdateServer = ({
 				{!hasCheckedUpdate && (
 					<div className="mb-8">
 						<p className="text text-muted-foreground">
-							Check for new releases and update Dokploy.
+							Check for new releases and update Meshdock.
 							<br />
 							<br />
 							We recommend checking for updates regularly to ensure you have the
@@ -247,7 +247,7 @@ export const UpdateServer = ({
 							<div className="text-[#5B9DFF]">
 								We recommend reviewing the{" "}
 								<Link
-									href="https://github.com/Dokploy/dokploy/releases"
+									href="https://github.com/softtyos/meshdock/releases"
 									target="_blank"
 									className="text-white underline hover:text-zinc-200"
 								>

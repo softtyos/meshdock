@@ -240,7 +240,7 @@ export const FleetMatrix = ({
 											onClick={(e) => e.stopPropagation()}
 										>
 											{node.serverId ? (
-												<TerminalModal serverId={node.serverId}>
+												<TerminalModal serverId={node.serverId} asButton>
 													<Button
 														variant="ghost"
 														size="icon"
@@ -251,7 +251,7 @@ export const FleetMatrix = ({
 													</Button>
 												</TerminalModal>
 											) : node.isLocal ? (
-												<TerminalModal serverId="local">
+												<TerminalModal serverId="local" asButton>
 													<Button
 														variant="ghost"
 														size="icon"

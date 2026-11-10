@@ -105,8 +105,8 @@ export const webServerSettings = pgTable("webServerSettings", {
 			dualModeBranding: boolean;
 		}>()
 		.default({
-			appName: null,
-			appDescription: null,
+			appName: "Meshdock",
+			appDescription: "Meshdock - Centralized Cloud Deployment & Multi-Server Mesh Management Platform.",
 			logoUrl: null,
 			faviconUrl: null,
 			customCss: null,

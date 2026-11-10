@@ -76,7 +76,7 @@ const Libsql = (
 				<Head>
 					<title>
 						Database: {data?.name} - {data?.environment?.project?.name} |
-						Dokploy
+						Meshdock
 					</title>
 				</Head>
 				<Card className="h-full bg-sidebar  p-2.5 rounded-xl w-full">

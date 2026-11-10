@@ -50,16 +50,18 @@ export const getPublicWhitelabelingConfig =
 		if (!config) return null;
 
 		return {
-			appName: config.appName,
-			appDescription: config.appDescription,
+			appName: config.appName || "Meshdock",
+			appDescription:
+				config.appDescription ||
+				"Meshdock - Centralized Cloud Deployment & Multi-Server Mesh Management Platform.",
 			logoUrl: config.logoUrl,
 			loginLogoUrl: config.loginLogoUrl,
 			faviconUrl: config.faviconUrl,
 			customCss: config.customCss,
 			ogImageUrl: config.ogImageUrl,
-			errorPageTitle: config.errorPageTitle,
+			errorPageTitle: config.errorPageTitle || "Meshdock - Error",
 			errorPageDescription: config.errorPageDescription,
-			footerText: config.footerText,
+			footerText: config.footerText || "Meshdock by Softty",
 			passwordResetGuide: config.passwordResetGuide ?? null,
 			supportEmail: config.supportEmail ?? null,
 			dualModeBranding: config.dualModeBranding ?? false,

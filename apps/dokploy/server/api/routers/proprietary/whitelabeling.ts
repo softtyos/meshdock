@@ -28,7 +28,14 @@ export const whitelabelingRouter = createTRPCRouter({
 			return null;
 		}
 		const settings = await getWebServerSettings();
-		return settings?.whitelabelingConfig ?? null;
+		const cfg = settings?.whitelabelingConfig;
+		return {
+			...cfg,
+			appName: cfg?.appName || "Meshdock",
+			appDescription:
+				cfg?.appDescription ||
+				"Meshdock - Centralized Cloud Deployment & Multi-Server Mesh Management Platform.",
+		};
 	}),
 
 	update: enterpriseProcedure

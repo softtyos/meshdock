@@ -20,7 +20,7 @@ interface WhitelabelingPreviewProps {
 }
 
 export function WhitelabelingPreview({ config }: WhitelabelingPreviewProps) {
-	const appName = config.appName || "Dokploy";
+	const appName = config.appName || "Meshdock";
 	const { resolvedTheme } = useTheme();
 	const effectiveLogoUrl =
 		config.dualModeBranding && resolvedTheme === "light" && config.logoLightUrl

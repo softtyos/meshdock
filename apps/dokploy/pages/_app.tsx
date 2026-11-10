@@ -3,6 +3,7 @@ import "@/styles/globals.css";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 import { Inter } from "next/font/google";
+import Head from "next/head";
 import { ThemeProvider } from "next-themes";
 import NextTopLoader from "nextjs-toploader";
 import type { ReactElement, ReactNode } from "react";
@@ -31,6 +32,9 @@ const MyApp = ({
 
 	return (
 		<>
+			<Head>
+				<title>Meshdock</title>
+			</Head>
 			<style jsx global>
 				{`
 					:root {

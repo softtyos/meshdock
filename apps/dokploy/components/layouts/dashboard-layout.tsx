@@ -17,7 +17,7 @@ export const DashboardLayout = ({ children, metaName }: Props) => {
 	const { data: haveRootAccess } = api.user.haveRootAccess.useQuery();
 	const { data: isCloud } = api.settings.isCloud.useQuery();
 	const { config: whitelabeling } = useWhitelabeling();
-	const appName = whitelabeling?.appName || "Dokploy";
+	const appName = whitelabeling?.appName || "Meshdock";
 	const { data: currentPlan } = api.stripe.getCurrentPlan.useQuery(undefined, {
 		enabled: isCloud === true,
 		refetchOnWindowFocus: false,
@@ -45,13 +45,9 @@ export const DashboardLayout = ({ children, metaName }: Props) => {
 
 	return (
 		<>
-			{metaName && (
-				<Head>
-					<title>
-						{metaName} | {appName}
-					</title>
-				</Head>
-			)}
+			<Head>
+				<title>{metaName ? `${metaName} | ${appName}` : appName}</title>
+			</Head>
 			<Page>{children}</Page>
 			{haveRootAccess === true && <ImpersonationBar />}
 		</>

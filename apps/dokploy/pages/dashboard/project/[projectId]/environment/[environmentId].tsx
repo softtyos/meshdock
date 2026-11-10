@@ -401,7 +401,7 @@ const EnvironmentPage = (
 			{ enabled: !!selectedTargetProject },
 		);
 	const { config: whitelabeling } = useWhitelabeling();
-	const appName = whitelabeling?.appName || "Dokploy";
+	const appName = whitelabeling?.appName || "Meshdock";
 
 	const emptyServices =
 		!currentEnvironment ||
@@ -1593,7 +1593,7 @@ const EnvironmentPage = (
 														<SelectItem value="dokploy-server">
 															<div className="flex items-center gap-2">
 																<ServerIcon className="size-4" />
-																<span>Dokploy server</span>
+																<span>Meshdock server</span>
 															</div>
 														</SelectItem>
 													)}

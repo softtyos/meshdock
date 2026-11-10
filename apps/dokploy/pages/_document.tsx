@@ -40,10 +40,6 @@ export default function Document({
 	return (
 		<Html lang="en" className="font-sans">
 			<Head>
-				{/* Rendered on the server so the correct branding is present on first
-				    paint (and for social scrapers), avoiding a flash of / fallback to
-				    the default Dokploy branding. */}
-				<title>{title}</title>
 				<meta property="og:title" content={title} />
 				<meta property="og:description" content={description} />
 				<meta property="og:image" content={ogImage} />

@@ -357,16 +357,20 @@ export const fleetRouter = createTRPCRouter({
 	 */
 	getFleetContainers: withPermission("docker", "read")
 		.input(
-			z.object({
-				serverId: z.string().optional().nullable(),
-			}),
+			z
+				.object({
+					serverId: z.string().optional().nullable(),
+				})
+				.optional()
+				.default({ serverId: null }),
 		)
 		.query(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
+			const safeInput = input || { serverId: null };
+			if (safeInput.serverId) {
+				await assertServerAccess(ctx.session, safeInput.serverId);
 			}
 
-			const stats = await getAllContainerStats(input.serverId ?? undefined);
+			const stats = await getAllContainerStats(safeInput.serverId ?? undefined);
 
 			// Sort by CPU percentage and Memory
 			const sortedByCpu = [...stats].sort((a, b) => {
@@ -387,17 +391,21 @@ export const fleetRouter = createTRPCRouter({
 	 */
 	getFleetTelemetry: withPermission("monitoring", "read")
 		.input(
-			z.object({
-				nodeId: z.string().optional(),
-				points: z.number().default(20),
-			}),
+			z
+				.object({
+					nodeId: z.string().optional(),
+					points: z.number().default(20),
+				})
+				.optional()
+				.default({ points: 20 }),
 		)
 		.query(async ({ input }) => {
+			const safeInput = input || { points: 20 };
 			// Generate realistic time-series points based on current system state
 			let baseCpu = 12.5;
 			let baseMemGB = 3.8;
 			const totalMemGB = 8.0;
-			const pointsCount = Math.max(10, Math.min(input.points, 60));
+			const pointsCount = Math.max(10, Math.min(safeInput.points, 60));
 
 			try {
 				const info = await docker.info();
