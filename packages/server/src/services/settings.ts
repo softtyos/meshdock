@@ -112,22 +112,30 @@ export const getUpdateData = async (
 			(t) => t.digest === latestTag.digest && t.name.startsWith("v"),
 		);
 
-		if (!latestVersionTag) {
-			return DEFAULT_UPDATE_DATA;
+		let updateAvailable = false;
+		let latestVersion = latestVersionTag?.name || "latest";
+
+		if (latestVersionTag) {
+			const cleanedCurrent = semver.clean(currentVersion);
+			const cleanedLatest = semver.clean(latestVersion);
+
+			if (cleanedCurrent && cleanedLatest && semver.gt(cleanedLatest, cleanedCurrent)) {
+				updateAvailable = true;
+			}
 		}
 
-		const latestVersion = latestVersionTag.name;
-
-		// Use semver to compare versions for stable releases
-		const cleanedCurrent = semver.clean(currentVersion);
-		const cleanedLatest = semver.clean(latestVersion);
-
-		if (!cleanedCurrent || !cleanedLatest) {
-			return DEFAULT_UPDATE_DATA;
+		// Also check digest comparison against running container if on latest
+		if (!updateAvailable && latestTag) {
+			try {
+				const currentDigest = await getServiceImageDigest();
+				if (currentDigest && latestTag.digest && currentDigest !== latestTag.digest) {
+					updateAvailable = true;
+					latestVersion = latestVersionTag?.name || "latest";
+				}
+			} catch {
+				// Fallback if digest check fails
+			}
 		}
-
-		// Check if the latest version is greater than the current version
-		const updateAvailable = semver.gt(cleanedLatest, cleanedCurrent);
 
 		return {
 			latestVersion,

@@ -90,43 +90,48 @@ export const UpdateWebServer = ({
 		healthResult.postgres.status === "healthy" &&
 		healthResult.traefik.status === "healthy";
 
-	const checkIsUpdateFinished = async () => {
+	const checkIsUpdateFinished = async (attempts = 0) => {
+		if (attempts > 35) {
+			toast.error(
+				"Thời gian chờ cập nhật quá lâu. Vui lòng kiểm tra lại dịch vụ hoặc tải lại trang.",
+			);
+			setModalState("idle");
+			return;
+		}
+
 		try {
-			const response = await fetch("/api/health");
+			const response = await fetch("/api/health", { cache: "no-store" });
 			if (!response.ok) {
 				throw new Error("Health check failed");
 			}
 
 			toast.success(
-				"The server has been updated. The page will be reloaded to reflect the changes...",
+				"Hệ thống đã nâng cấp thành công lên phiên bản mới! Đang tải lại trang...",
 			);
 
 			setTimeout(() => {
 				window.location.reload();
 			}, 2000);
 		} catch {
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-			void checkIsUpdateFinished();
+			await new Promise((resolve) => setTimeout(resolve, 3000));
+			void checkIsUpdateFinished(attempts + 1);
 		}
 	};
 
 	const handleConfirm = async () => {
+		setModalState("updating");
 		try {
-			setModalState("updating");
 			await updateServer();
-
-			await new Promise((resolve) => setTimeout(resolve, 8000));
-
-			await checkIsUpdateFinished();
 		} catch (error) {
-			setModalState("results");
-			console.error("Error updating server:", error);
-			const message =
-				error instanceof Error && error.message
-					? error.message
-					: "An error occurred while updating the server, please try again.";
-			toast.error(message);
+			console.log(
+				"Server update dispatched (connection drop during restart is normal):",
+				error,
+			);
 		}
+
+		// Wait 6 seconds for Swarm to stop the old task and start the new container
+		await new Promise((resolve) => setTimeout(resolve, 6000));
+		await checkIsUpdateFinished();
 	};
 
 	const handleClose = () => {
@@ -150,36 +155,34 @@ export const UpdateWebServer = ({
 						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
 						<span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
 					</span>
-					Update Server
+					Nâng cấp ngay
 				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>
-						{modalState === "idle" && "Are you absolutely sure?"}
-						{modalState === "checking" && "Verifying Services..."}
+						{modalState === "idle" && "Xác nhận nâng cấp hệ thống"}
+						{modalState === "checking" && "Đang kiểm tra dịch vụ..."}
 						{modalState === "results" &&
-							(allHealthy ? "Ready to Update" : "Service Issues Detected")}
-						{modalState === "updating" && "Server update in progress"}
+							(allHealthy ? "Sẵn sàng nâng cấp" : "Phát hiện cảnh báo dịch vụ")}
+						{modalState === "updating" && "Đang tiến hành nâng cấp hệ thống..."}
 					</AlertDialogTitle>
 					<AlertDialogDescription asChild>
 						<div>
 							{modalState === "idle" && (
 								<span>
-									This will update the web server to the new version. You will
-									not be able to use the panel during the update process. The
-									page will be reloaded once the update is finished.
+									Bảng điều khiển Meshdock sẽ được nâng cấp lên phiên bản mới nhất.
+									Trong thời gian nâng cấp (khoảng 1 - 2 phút), trang quản trị sẽ tạm thời khởi động lại để áp dụng bản cập nhật.
 									<br />
 									<br />
-									We recommend verifying that all services are running before
-									updating.
+									<strong>Lưu ý:</strong> Mọi ứng dụng và website của bạn vẫn tiếp tục chạy bình thường qua cổng Traefik mà không bị gián đoạn.
 								</span>
 							)}
 
 							{modalState === "checking" && (
 								<span className="flex items-center gap-2">
 									<Loader2 className="animate-spin h-4 w-4" />
-									Checking PostgreSQL and Traefik...
+									Đang kiểm tra trạng thái PostgreSQL và Traefik...
 								</span>
 							)}
 
@@ -200,15 +203,14 @@ export const UpdateWebServer = ({
 										<div className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3">
 											<AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
 											<span className="text-sm text-yellow-600 dark:text-yellow-400">
-												Some services are not healthy. You can still proceed
-												with the update.
+												Một số dịch vụ chưa tối ưu. Bạn vẫn có thể tiếp tục tiến trình nâng cấp.
 											</span>
 										</div>
 									)}
 
 									{allHealthy && (
 										<span className="text-sm text-muted-foreground">
-											All services are running. You can proceed with the update.
+											Tất cả dịch vụ đang hoạt động tốt. Bạn có thể tiến hành nâng cấp.
 										</span>
 									)}
 								</div>
@@ -218,42 +220,46 @@ export const UpdateWebServer = ({
 								<div className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3">
 									<AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
 									<span className="text-sm text-yellow-600 dark:text-yellow-400">
-										Could not verify services. You can still proceed with the
-										update.
+										Không thể kiểm tra dịch vụ trước. Bạn vẫn có thể tiếp tục tiến hành nâng cấp.
 									</span>
 								</div>
 							)}
 
 							{modalState === "updating" && (
-								<span className="flex items-center gap-2">
-									<Loader2 className="animate-spin h-4 w-4" />
-									The server is being updated, please wait...
-								</span>
+								<div className="flex flex-col items-center justify-center py-4 gap-3">
+									<div className="flex items-center gap-2 text-primary font-medium">
+										<Loader2 className="animate-spin h-5 w-5" />
+										<span>Đang tải image mới và khởi động lại dịch vụ...</span>
+									</div>
+									<p className="text-xs text-muted-foreground text-center">
+										Bảng điều khiển sẽ tự động làm mới trang ngay khi hoàn tất. Quá trình mất khoảng 30 - 60 giây.
+									</p>
+								</div>
 							)}
 						</div>
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				{modalState === "idle" && (
 					<AlertDialogFooter>
-						<AlertDialogCancel onClick={handleClose}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel onClick={handleClose}>Để sau</AlertDialogCancel>
 						<Button variant="secondary" onClick={handleVerify}>
 							<RefreshCw className="h-4 w-4" />
-							Verify Status
+							Kiểm tra trạng thái
 						</Button>
 						<AlertDialogAction onClick={handleConfirm}>
-							Confirm
+							Nâng cấp ngay
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				)}
 				{modalState === "results" && (
 					<AlertDialogFooter>
-						<AlertDialogCancel onClick={handleClose}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel onClick={handleClose}>Để sau</AlertDialogCancel>
 						<Button variant="secondary" onClick={handleVerify}>
 							<RefreshCw className="h-4 w-4" />
-							Re-check
+							Kiểm tra lại
 						</Button>
 						<AlertDialogAction onClick={handleConfirm}>
-							{allHealthy ? "Confirm" : "Confirm Anyway"}
+							{allHealthy ? "Nâng cấp ngay" : "Vẫn nâng cấp"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				)}

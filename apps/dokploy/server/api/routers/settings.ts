@@ -14,6 +14,7 @@ import {
 	cleanupSystem,
 	cleanupVolumes,
 	DEFAULT_UPDATE_DATA,
+	execAsync,
 	findServerById,
 	getDockerDiskUsage,
 	getDockerResourceType,
@@ -625,39 +626,65 @@ export const settingsRouter = createTRPCRouter({
 
 		return await getUpdateData(packageInfo.version);
 	}),
-	updateServer: adminProcedure.mutation(async ({ ctx }) => {
-		if (IS_CLOUD) {
-			return true;
-		}
+	updateServer: adminProcedure
+		.input(
+			z
+				.object({
+					force: z.boolean().optional(),
+					imageTag: z.string().optional(),
+				})
+				.optional(),
+		)
+		.mutation(async ({ input, ctx }) => {
+			if (IS_CLOUD) {
+				return { ok: true, version: "cloud" };
+			}
 
-		const resourceType = await getDockerResourceType("dokploy");
-		if (resourceType !== "service") {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message:
-					"Dokploy is not running as a Docker service, so in-panel updates are unavailable here. Update manually instead.",
-			});
-		}
+			const resourceType = await getDockerResourceType("dokploy");
+			if (resourceType !== "service") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"Meshdock is not running as a Docker Swarm service, so in-panel updates are unavailable here. Update manually instead.",
+				});
+			}
 
-		const data = await getUpdateData(packageInfo.version);
-		if (data.updateAvailable) {
-			void spawnAsync("docker", [
-				"service",
-				"update",
-				"--force",
-				"--image",
-				`softtynet/dokploy:${data.latestVersion}`,
-				"dokploy",
-			]);
-			await audit(ctx, {
-				action: "update",
-				resourceType: "settings",
-				resourceName: "dokploy-version",
-			});
-		}
+			const data = await getUpdateData(packageInfo.version);
+			const shouldUpdate = input?.force || data.updateAvailable;
 
-		return true;
-	}),
+			if (shouldUpdate) {
+				const baseImage = process.env.DOKPLOY_IMAGE || "softtynet/dokploy";
+				const targetTag = input?.imageTag || data.latestVersion || "latest";
+				const targetImage = `${baseImage}:${targetTag}`;
+
+				// Run update detached after returning HTTP response so connection is not abruptly severed
+				setTimeout(async () => {
+					try {
+						console.log(`[Meshdock Auto-Update] Pre-pulling image: ${targetImage}...`);
+						await execAsync(`docker pull ${targetImage}`).catch((err: any) => {
+							console.warn("[Meshdock Auto-Update] Pre-pull notice:", err?.message ?? err);
+						});
+						console.log(`[Meshdock Auto-Update] Updating service dokploy with --update-order stop-first...`);
+						await execAsync(
+							`docker service update --update-order stop-first --force --image ${targetImage} dokploy`,
+						);
+						console.log(`[Meshdock Auto-Update] Service update triggered successfully ✅`);
+					} catch (err: any) {
+						console.error("[Meshdock Auto-Update] Service update execution failed:", err);
+					}
+				}, 1500);
+
+				await audit(ctx, {
+					action: "update",
+					resourceType: "settings",
+					resourceName: "meshdock-version",
+				});
+
+				return { ok: true, version: targetTag };
+			}
+
+			return { ok: true, version: data.latestVersion || packageInfo.version };
+		}),
 
 	getDokployVersion: protectedProcedure.query(() => {
 		return packageInfo.version;

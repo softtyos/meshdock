@@ -1,9 +1,12 @@
 import { format } from "date-fns";
 import {
 	Activity,
+	ArrowUpRight,
 	BarChartHorizontalBigIcon,
 	Boxes,
 	Clock,
+	Cpu,
+	HardDrive,
 	Key,
 	KeyIcon,
 	Loader2,
@@ -15,6 +18,7 @@ import {
 	Terminal,
 	Trash2,
 	User,
+	Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -54,6 +58,10 @@ export const ShowServers = () => {
 	const router = useRouter();
 	const query = router.query;
 	const { data, isPending } = api.server.all.useQuery();
+	const { data: fleetData, isPending: isFleetPending } =
+		api.fleet.getFleetOverview.useQuery(undefined, {
+			refetchInterval: 15000,
+		});
 	const { data: sshKeys } = api.sshKey.all.useQuery();
 	const { data: isCloud } = api.settings.isCloud.useQuery();
 	const { data: permissions } = api.user.getPermissions.useQuery();
@@ -72,6 +80,89 @@ export const ShowServers = () => {
 						Quản lý linh hoạt cụm Docker Swarm tự động hóa Agent hoặc các máy chủ VPS độc lập qua SSH.
 					</p>
 				</div>
+			</div>
+
+			{/* Fleet Health & Resource Summary */}
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex items-center justify-between">
+					<div className="space-y-1">
+						<span className="text-xs text-muted-foreground font-medium">Toàn bộ Máy chủ / Nodes</span>
+						<p className="text-2xl font-bold font-mono">
+							{fleetData?.kpis ? fleetData.kpis.totalNodes : (data?.length || 0) + 1}
+						</p>
+						<span className="text-[11px] text-muted-foreground">
+							{fleetData?.kpis?.swarmNodes || 1} Swarm • {fleetData?.kpis?.standaloneNodes || data?.length || 0} VPS
+						</span>
+					</div>
+					<div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+						<ServerIcon className="size-5" />
+					</div>
+				</Card>
+
+				<Card className="p-4 border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between">
+					<div className="space-y-1">
+						<span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+							<span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+							Đang chạy ngon lành
+						</span>
+						<p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+							{fleetData?.kpis ? fleetData.kpis.onlineNodes : 1}
+						</p>
+						<span className="text-[11px] text-muted-foreground">
+							Sẵn sàng tiếp nhận & xử lý tác vụ
+						</span>
+					</div>
+					<div className="size-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+						<Activity className="size-5" />
+					</div>
+				</Card>
+
+				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex items-center justify-between">
+					<div className="space-y-1">
+						<span className="text-xs text-muted-foreground font-medium">Cảnh báo / Quá tải</span>
+						<p className={`text-2xl font-bold font-mono ${(fleetData?.kpis?.offlineNodes || 0) > 0 ? "text-rose-500" : "text-foreground"}`}>
+							{fleetData?.kpis ? fleetData.kpis.offlineNodes : 0}
+						</p>
+						<span className="text-[11px] text-muted-foreground">
+							{(fleetData?.kpis?.offlineNodes || 0) > 0 ? "Cần kiểm tra ngay" : "Hạ tầng ổn định tuyệt đối"}
+						</span>
+					</div>
+					<div className="size-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+						<Zap className="size-5" />
+					</div>
+				</Card>
+
+				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex flex-col justify-between">
+					<div className="flex items-center justify-between">
+						<span className="text-xs text-muted-foreground font-medium">Năng lực Tính toán</span>
+						<Link
+							href="/dashboard/fleet"
+							className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+						>
+							<span>Fleet Metrics</span>
+							<ArrowUpRight className="size-3.5" />
+						</Link>
+					</div>
+					<div className="mt-2 flex items-center gap-3 text-xs font-mono">
+						<div className="flex items-center gap-1">
+							<Cpu className="size-3.5 text-muted-foreground" />
+							<span className="font-bold">{fleetData?.kpis?.totalCores || 2} Cores</span>
+						</div>
+						<span className="text-muted-foreground">•</span>
+						<div className="flex items-center gap-1">
+							<HardDrive className="size-3.5 text-muted-foreground" />
+							<span className="font-bold">
+								{fleetData?.kpis
+									? (fleetData.kpis.totalMemoryBytes / (1024 * 1024 * 1024)).toFixed(0)
+									: 4}{" "}
+								GB RAM
+							</span>
+						</div>
+					</div>
+					<span className="text-[11px] text-muted-foreground mt-1">
+						{fleetData?.kpis?.totalContainers || 0} containers đang vận hành
+					</span>
+				</Card>
 			</div>
 
 			<Tabs defaultValue="swarm" className="w-full space-y-6">
@@ -148,6 +239,13 @@ export const ShowServers = () => {
 															{data?.map((server) => {
 																const isActive = server.serverStatus === "active";
 																const isBuildServer = server.serverType === "build";
+																const fleetNode = fleetData?.nodes?.find(
+																	(n) => n.serverId === server.serverId,
+																);
+																const isOnline = fleetNode
+																	? fleetNode.status === "online"
+																	: isActive;
+
 																return (
 																	<Card
 																		key={server.serverId}
@@ -166,10 +264,24 @@ export const ShowServers = () => {
 																				</div>
 																			</div>
 																			<TooltipProvider>
-																				<div className="flex gap-2 mt-2 flex-wrap">
-																					<Badge variant={server.serverStatus === "active" ? "default" : "secondary"}>
-																						{server.serverStatus}
-																					</Badge>
+																				<div className="flex gap-2 mt-2 flex-wrap items-center">
+																					{isOnline ? (
+																						<Badge
+																							variant="outline"
+																							className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs inline-flex items-center gap-1.5 font-medium"
+																						>
+																							<span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+																							<span>Ngon lành (Online)</span>
+																						</Badge>
+																					) : (
+																						<Badge
+																							variant="destructive"
+																							className="text-xs inline-flex items-center gap-1.5 font-medium"
+																						>
+																							<span className="size-1.5 rounded-full bg-white" />
+																							<span>Ngoại tuyến</span>
+																						</Badge>
+																					)}
 																					<Badge
 																						variant={
 																							isBuildServer

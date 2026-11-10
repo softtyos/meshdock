@@ -5,6 +5,8 @@ import {
 	Check,
 	CheckCircle2,
 	Copy,
+	Cpu,
+	HardDrive,
 	HelpCircle,
 	Loader2,
 	MoreHorizontal,
@@ -363,8 +365,8 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 									<TableRow className="bg-muted/40">
 										<TableHead className="text-left font-semibold">Hostname</TableHead>
 										<TableHead className="text-center font-semibold">Vai trò</TableHead>
-										<TableHead className="text-center font-semibold">Trạng thái</TableHead>
-										<TableHead className="text-center font-semibold">Khả dụng</TableHead>
+										<TableHead className="text-center font-semibold">Sức khỏe & Tải</TableHead>
+										<TableHead className="text-left font-semibold">Tài nguyên Phần cứng</TableHead>
 										<TableHead className="text-center font-semibold">Engine Version</TableHead>
 										<TableHead className="text-center font-semibold">Thời điểm tạo</TableHead>
 										<TableHead className="text-right font-semibold">Thao tác</TableHead>
@@ -376,6 +378,13 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 										const isLeader = !!node.ManagerStatus?.Leader;
 										const isReady = node.Status.State === "ready";
 										const isDrain = node.Spec.Availability === "drain";
+										const cpuCores = Math.round(
+											(node.Description?.Resources?.NanoCPUs || 0) / 1e9,
+										);
+										const memoryGb = (
+											(node.Description?.Resources?.MemoryBytes || 0) /
+											(1024 * 1024 * 1024)
+										).toFixed(1);
 
 										return (
 											<TableRow key={node.ID} className="hover:bg-muted/30">
@@ -408,25 +417,48 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 												</TableCell>
 
 												<TableCell className="text-center">
-													<Badge
-														variant="outline"
-														className={
-															isReady
-																? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-																: "bg-destructive/10 text-destructive border-destructive/20"
-														}
-													>
-														{node.Status.State}
-													</Badge>
+													{isReady && !isDrain ? (
+														<Badge
+															variant="outline"
+															className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs inline-flex items-center gap-1.5 font-medium"
+														>
+															<span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+															<span>Ngon lành (Ready)</span>
+														</Badge>
+													) : isDrain ? (
+														<Badge
+															variant="outline"
+															className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-xs inline-flex items-center gap-1.5 font-medium"
+														>
+															<span className="size-2 rounded-full bg-amber-500" />
+															<span>Bảo trì (Drain)</span>
+														</Badge>
+													) : (
+														<Badge
+															variant="destructive"
+															className="bg-destructive/10 text-destructive border-destructive/20 text-xs inline-flex items-center gap-1.5 font-medium"
+														>
+															<span className="size-2 rounded-full bg-rose-500" />
+															<span>Quá tải / Ngắt kết nối</span>
+														</Badge>
+													)}
 												</TableCell>
 
-												<TableCell className="text-center">
-													<Badge
-														variant={isDrain ? "destructive" : "outline"}
-														className="text-xs"
-													>
-														{node.Spec.Availability}
-													</Badge>
+												<TableCell className="text-left">
+													<div className="flex flex-col text-xs font-mono">
+														<div className="flex items-center gap-1.5 text-foreground">
+															<Cpu className="size-3 text-muted-foreground" />
+															<span>{cpuCores > 0 ? `${cpuCores} vCPU` : "—"}</span>
+															<span className="text-muted-foreground">•</span>
+															<HardDrive className="size-3 text-muted-foreground" />
+															<span>{Number(memoryGb) > 0 ? `${memoryGb} GB` : "—"}</span>
+														</div>
+														{node.Description?.Platform?.OS && (
+															<span className="text-[10px] text-muted-foreground">
+																{node.Description.Platform.OS}/{node.Description.Platform.Architecture}
+															</span>
+														)}
+													</div>
 												</TableCell>
 
 												<TableCell className="text-center text-xs text-muted-foreground font-mono">
