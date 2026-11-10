@@ -66,7 +66,7 @@ export const sendDokployRestartNotifications = async () => {
 					if (email) {
 						await sendEmailNotification(
 							email,
-							"Dokploy Server Restarted",
+							"Meshdock Server Restarted",
 							template,
 						);
 					}
@@ -74,7 +74,7 @@ export const sendDokployRestartNotifications = async () => {
 					if (resend) {
 						await sendResendNotification(
 							resend,
-							"Dokploy Server Restarted",
+							"Meshdock Server Restarted",
 							template,
 						);
 					}
@@ -85,7 +85,7 @@ export const sendDokployRestartNotifications = async () => {
 						`${discord.decoration ? decoration : ""} ${text}`.trim();
 
 					await sendDiscordNotification(discord, {
-						title: decorate(">", "`✅` Dokploy Server Restarted"),
+						title: decorate(">", "`✅` Meshdock Server Restarted"),
 						color: 0x57f287,
 						fields: [
 							{
@@ -116,7 +116,7 @@ export const sendDokployRestartNotifications = async () => {
 						`${gotify.decoration ? decoration : ""} ${text}\n`;
 					await sendGotifyNotification(
 						gotify,
-						decorate("✅", "Dokploy Server Restarted"),
+						decorate("✅", "Meshdock Server Restarted"),
 						`${decorate("🕒", `Date: ${date.toLocaleString()}`)}`,
 					);
 				}
@@ -124,7 +124,7 @@ export const sendDokployRestartNotifications = async () => {
 				if (ntfy) {
 					await sendNtfyNotification(
 						ntfy,
-						"Dokploy Server Restarted",
+						"Meshdock Server Restarted",
 						"white_check_mark",
 						"",
 						`🕒Date: ${date.toLocaleString()}`,
@@ -134,7 +134,7 @@ export const sendDokployRestartNotifications = async () => {
 				if (telegram) {
 					await sendTelegramNotification(
 						telegram,
-						`<b>✅ Dokploy Server Restarted</b>\n\n<b>Date:</b> ${format(
+						`<b>✅ Meshdock Server Restarted</b>\n\n<b>Date:</b> ${format(
 							date,
 							"PP",
 						)}\n<b>Time:</b> ${format(date, "pp")}`,
@@ -148,7 +148,7 @@ export const sendDokployRestartNotifications = async () => {
 						attachments: [
 							{
 								color: "#00FF00",
-								pretext: ":white_check_mark: *Dokploy Server Restarted*",
+								pretext: ":white_check_mark: *Meshdock Server Restarted*",
 								fields: [
 									{
 										title: "Time",
@@ -163,7 +163,7 @@ export const sendDokployRestartNotifications = async () => {
 
 				if (mattermost) {
 					await sendMattermostNotification(mattermost, {
-						text: `**✅ Dokploy Server Restarted**\n\n**Date:** ${format(date, "PP")}\n**Time:** ${format(date, "pp")}`,
+						text: `**✅ Meshdock Server Restarted**\n\n**Date:** ${format(date, "PP")}\n**Time:** ${format(date, "pp")}`,
 						channel: mattermost.channel,
 						username: mattermost.username || "Dokploy",
 					});
@@ -172,7 +172,7 @@ export const sendDokployRestartNotifications = async () => {
 				if (custom) {
 					try {
 						await sendCustomNotification(custom, {
-							title: "Dokploy Server Restarted",
+							title: "Meshdock Server Restarted",
 							message: "Dokploy server has been restarted successfully",
 							timestamp: date.toISOString(),
 							date: date.toLocaleString(),
@@ -204,7 +204,7 @@ export const sendDokployRestartNotifications = async () => {
 							header: {
 								title: {
 									tag: "plain_text",
-									content: "✅ Dokploy Server Restarted",
+									content: "✅ Meshdock Server Restarted",
 								},
 								subtitle: {
 									tag: "plain_text",
@@ -262,14 +262,14 @@ export const sendDokployRestartNotifications = async () => {
 				if (pushover) {
 					await sendPushoverNotification(
 						pushover,
-						"Dokploy Server Restarted",
+						"Meshdock Server Restarted",
 						`Date: ${date.toLocaleString()}`,
 					);
 				}
 
 				if (teams) {
 					await sendTeamsNotification(teams, {
-						title: "✅ Dokploy Server Restarted",
+						title: "✅ Meshdock Server Restarted",
 						facts: [
 							{ name: "Status", value: "Successful" },
 							{ name: "Restart Time", value: format(date, "PP pp") },

@@ -27,9 +27,10 @@ export default function Document({
 	customCss,
 	baseUrl,
 }: WhitelabelingDocumentProps) {
-	const title = appName || "Dokploy";
+	const title = appName || "Meshdock";
 	const description =
-		appDescription || "The Open Source alternative to Netlify, Vercel, Heroku.";
+		appDescription ||
+		"Meshdock - Centralized Cloud Deployment & Multi-Server Mesh Management Platform.";
 
 	let ogImage = ogImageUrl || "/og.png";
 	if (ogImage.startsWith("/")) {

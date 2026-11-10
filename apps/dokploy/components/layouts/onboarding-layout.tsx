@@ -13,10 +13,10 @@ interface Props {
 }
 export const OnboardingLayout = ({ children, leftPanel }: Props) => {
 	const { config: whitelabeling } = useWhitelabelingPublic();
-	const appName = whitelabeling?.appName || "Dokploy";
+	const appName = whitelabeling?.appName || "Meshdock";
 	const appDescription =
 		whitelabeling?.appDescription ||
-		"\u201CThe Open Source alternative to Netlify, Vercel, Heroku.\u201D";
+		"\u201CCentralized Cloud Deployment & Multi-Server Mesh Management Platform.\u201D";
 	const logoUrl =
 		whitelabeling?.loginLogoUrl || whitelabeling?.logoUrl || undefined;
 	const logoLightUrl =
@@ -53,7 +53,7 @@ export const OnboardingLayout = ({ children, leftPanel }: Props) => {
 				</div>
 				<div className="mx-auto flex w-full max-w-lg items-center justify-center gap-1 pb-6 text-muted-foreground sm:justify-end">
 					<Button variant="ghost" size="icon">
-						<Link href="https://github.com/dokploy/dokploy">
+						<Link href="https://github.com/softtyos/dokploy">
 							<GithubIcon />
 						</Link>
 					</Button>

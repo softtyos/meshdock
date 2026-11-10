@@ -100,7 +100,7 @@ export default function Home() {
 						}
 					/>
 					<span className="font-medium text-sm">
-						{whitelabeling?.appName || "Dokploy"}
+						{whitelabeling?.appName || "Meshdock"}
 					</span>
 				</Link>
 				<CardTitle className="text-2xl font-bold">Reset Password</CardTitle>

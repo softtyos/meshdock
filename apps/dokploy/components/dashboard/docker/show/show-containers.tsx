@@ -109,7 +109,7 @@ export const ShowContainers = ({ serverId }: Props) => {
 							Docker Containers
 						</CardTitle>
 						<CardDescription>
-							See all the containers of your dokploy server
+							See all the containers of your Meshdock server
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-2 py-8 border-t">

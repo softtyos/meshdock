@@ -84,7 +84,7 @@ export const ShowHealth = ({ serverId }: Props) => {
 	const buildHealthReport = () => {
 		if (!health) return "";
 		const lines: string[] = [];
-		lines.push("# Dokploy server health report");
+		lines.push("# Meshdock server health report");
 		lines.push(`Generated: ${new Date(health.checkedAt).toLocaleString()}`);
 		lines.push(
 			`Window: ${SINCE_HOURS_OPTIONS.find((o) => o.value === sinceHours)?.label ?? `${sinceHours}h`}`,
@@ -177,7 +177,7 @@ export const ShowHealth = ({ serverId }: Props) => {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = `dokploy-health-report-${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
+		a.download = `meshdock-health-report-${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
 		a.click();
 		URL.revokeObjectURL(url);
 	};
