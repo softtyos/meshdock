@@ -1,4 +1,4 @@
-name: Dokploy Monitoring Build
+name: MeshDock Monitoring Build
 
 on:
   push:
