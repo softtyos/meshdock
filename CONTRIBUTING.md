@@ -1,6 +1,6 @@
 # Contributing
 
-Hey, thanks for your interest in contributing to Dokploy! We appreciate your help and taking your time to contribute.
+Hey, thanks for your interest in contributing to Meshdock! We appreciate your help and taking your time to contribute.
 
 Before you start, please first discuss the feature/bug you want to add with the owners and community via github issues.
 
@@ -56,8 +56,8 @@ Before you start, please make the clone based on the `canary` branch, since the 
 We use Node v24.22.1 and recommend this specific version. If you have nvm installed, you can run `nvm install 24.22.1 && nvm use` in the root directory.
 
 ```bash
-git clone https://github.com/dokploy/dokploy.git
-cd dokploy
+git clone https://github.com/softtyos/meshdock.git
+cd meshdock
 pnpm install
 cp apps/dokploy/.env.example apps/dokploy/.env
 ```
@@ -184,7 +184,7 @@ curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.39.1/pack-v0.
 - **Focus and Scope:** Each Pull Request should ideally address a single, well-defined problem or introduce one new feature. This greatly facilitates review and reduces the chances of introducing unintended side effects.
 - **Avoid Unfocused Changes:** Please avoid submitting Pull Requests that contain only minor changes such as whitespace adjustments, IDE-generated formatting, or removal of unused variables, unless these are part of a larger, clearly defined refactor or a dedicated "cleanup" Pull Request that addresses a specific `good first issue` or maintenance task.
 - **Issue Association:** For any significant change, it's highly recommended to open an issue first to discuss the proposed solution with the community and maintainers. This ensures alignment and avoids duplicated effort. If your PR resolves an existing issue, please link it in the description (e.g., `Fixes #123`, `Closes #456`).
-- **Large Features:** Pull Requests that introduce very large or broad features **will not be accepted** unless the idea is first outlined and discussed in a GitHub issue. Large features should be designed together with the Dokploy team so the project stays coherent and moves in the same direction. Open an issue to propose and align on the design before implementing.
+- **Large Features:** Pull Requests that introduce very large or broad features **will not be accepted** unless the idea is first outlined and discussed in a GitHub issue. Large features should be designed together with the Meshdock team so the project stays coherent and moves in the same direction. Open an issue to propose and align on the design before implementing.
 
 Thank you for your contribution!
 

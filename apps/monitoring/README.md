@@ -1,6 +1,6 @@
-# Dokploy Monitoring (Go Version)
+# Meshdock Monitoring (Go Version)
 
-Application that powers Dokploy's monitoring service.
+Application that powers Meshdock's monitoring service.
 
 You can use it for monitoring any external service.
 
