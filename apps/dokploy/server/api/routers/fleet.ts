@@ -71,20 +71,41 @@ export const fleetRouter = createTRPCRouter({
 				),
 			]);
 
-			if (localInfo?.Swarm?.LocalNodeState === "active") {
+			let swarmInspectData: any = null;
+			try {
+				swarmInspectData = await Promise.race([
+					docker.swarmInspect(),
+					new Promise((_, reject) =>
+						setTimeout(() => reject(new Error("Swarm inspect timeout")), 2500),
+					),
+				]);
+			} catch {
+				// Swarm not active
+			}
+
+			const isSwarmActive =
+				localInfo?.Swarm?.LocalNodeState === "active" ||
+				localInfo?.Swarm?.LocalNodeState === "locked" ||
+				!!swarmInspectData?.ID;
+
+			if (isSwarmActive) {
 				isLocalSwarm = true;
-				const cId = localInfo.Swarm.Cluster?.ID || "swarm-primary";
+				const cId =
+					swarmInspectData?.ID ||
+					localInfo?.Swarm?.Cluster?.ID ||
+					localInfo?.Swarm?.NodeID ||
+					"swarm-primary";
 				localClusterId = cId;
 				localClusterName = `Swarm Cluster (${cId.slice(0, 8)})`;
 
-				if (localInfo.Swarm.ControlAvailable) {
+				if (localInfo?.Swarm?.ControlAvailable || !!swarmInspectData?.ID) {
 					try {
-						localSwarmNodes = await Promise.race([
+						localSwarmNodes = (await Promise.race([
 							docker.listNodes(),
 							new Promise((_, reject) =>
 								setTimeout(() => reject(new Error("List nodes timeout")), 3000),
 							),
-						]) as any[];
+						])) as any[];
 					} catch (e) {
 						console.warn("Could not list local swarm nodes:", e);
 					}
@@ -97,7 +118,7 @@ export const fleetRouter = createTRPCRouter({
 				name: localInfo.Name || "Meshdock Controller (Local)",
 				ip: "127.0.0.1",
 				role: isLocalSwarm
-					? localInfo.Swarm?.ControlAvailable
+					? (localInfo?.Swarm?.ControlAvailable ?? !!swarmInspectData?.ID)
 						? "swarm-manager"
 						: "swarm-worker"
 					: "standalone",
@@ -107,7 +128,7 @@ export const fleetRouter = createTRPCRouter({
 				clusterId: localClusterId,
 				clusterName: localClusterName,
 				swarmNodeId: localInfo.Swarm?.NodeID,
-				isLeader: localInfo.Swarm?.ControlAvailable ?? false,
+				isLeader: localInfo.Swarm?.ControlAvailable ?? !!swarmInspectData?.ID,
 				cpuCores: localInfo.NCPU || 2,
 				memoryBytes: localInfo.MemTotal || 4 * 1024 * 1024 * 1024,
 				containersRunning: localInfo.ContainersRunning || 0,
@@ -159,9 +180,28 @@ export const fleetRouter = createTRPCRouter({
 						),
 					]);
 
-					const isSwarm = remoteInfo?.Swarm?.LocalNodeState === "active";
+					let remoteSwarmInspect: any = null;
+					try {
+						remoteSwarmInspect = await Promise.race([
+							remoteDocker.swarmInspect(),
+							new Promise((_, reject) =>
+								setTimeout(() => reject(new Error("Timeout")), 2000),
+							),
+						]);
+					} catch {
+						// Remote is not a swarm manager or swarm inactive
+					}
+
+					const isSwarm =
+						remoteInfo?.Swarm?.LocalNodeState === "active" ||
+						remoteInfo?.Swarm?.LocalNodeState === "locked" ||
+						!!remoteSwarmInspect?.ID;
+
 					const cId = isSwarm
-						? remoteInfo.Swarm.Cluster?.ID || `swarm-${srv.serverId.slice(0, 6)}`
+						? remoteSwarmInspect?.ID ||
+						  remoteInfo?.Swarm?.Cluster?.ID ||
+						  remoteInfo?.Swarm?.NodeID ||
+						  `swarm-${srv.serverId.slice(0, 6)}`
 						: "standalone";
 					const cName = isSwarm
 						? `Swarm Cluster (${cId.slice(0, 8)})`
@@ -317,6 +357,9 @@ export const fleetRouter = createTRPCRouter({
 				});
 			}
 			const group = clusterMap.get(n.clusterId)!;
+			if (n.role !== "standalone") {
+				group.type = "swarm";
+			}
 			group.nodeCount++;
 			if (n.status === "online") group.onlineCount++;
 			group.totalCores += n.cpuCores;
