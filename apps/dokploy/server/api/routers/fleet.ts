@@ -5,6 +5,7 @@ import {
 	getAllContainerStats,
 	getRemoteDocker,
 	IS_CLOUD,
+	optimizeHostResources,
 } from "@dokploy/server";
 import { db } from "@dokploy/server/db";
 import { server } from "@dokploy/server/db/schema";
@@ -620,6 +621,162 @@ networks:
 			const container = targetDocker.getContainer(input.containerId);
 			await container.restart();
 			return { ok: true };
+		}),
+
+	/**
+	 * Bulk 1-Click: Prune Docker build cache across all online nodes in the fleet simultaneously
+	 */
+	bulkCleanDockerCache: withPermission("docker", "read")
+		.mutation(async ({ ctx }) => {
+			const orgId = ctx.session.activeOrganizationId;
+			const remoteServers = await db.query.server.findMany({
+				where: eq(server.organizationId, orgId),
+			}).catch(() => []);
+
+			const results: { name: string; serverId: string | null; success: boolean; message: string }[] = [];
+
+			// 1. Clean local node
+			try {
+				const localRes = await optimizeHostResources(null, "buildCache");
+				results.push({
+					name: "Local Controller (application.softty.net)",
+					serverId: null,
+					success: localRes.success,
+					message: localRes.message,
+				});
+			} catch (err: any) {
+				results.push({
+					name: "Local Controller (application.softty.net)",
+					serverId: null,
+					success: false,
+					message: err?.message || "Lỗi khi dọn dẹp node cục bộ",
+				});
+			}
+
+			// 2. Clean all remote nodes concurrently
+			await Promise.allSettled(
+				remoteServers.map(async (srv) => {
+					try {
+						const res = await optimizeHostResources(srv.serverId, "buildCache");
+						results.push({
+							name: srv.name,
+							serverId: srv.serverId,
+							success: res.success,
+							message: res.message,
+						});
+					} catch (err: any) {
+						results.push({
+							name: srv.name,
+							serverId: srv.serverId,
+							success: false,
+							message: err?.message || "Lỗi khi dọn dẹp node qua SSH",
+						});
+					}
+				}),
+			);
+
+			const successCount = results.filter((r) => r.success).length;
+			return {
+				success: successCount > 0,
+				totalNodes: results.length,
+				successCount,
+				results,
+			};
+		}),
+
+	/**
+	 * Bulk 1-Click: Identify and restart degraded, unhealthy, or overloaded services across the entire fleet
+	 */
+	bulkRestartOverloadedServices: withPermission("docker", "read")
+		.mutation(async ({ ctx }) => {
+			const orgId = ctx.session.activeOrganizationId;
+			const remoteServers = await db.query.server.findMany({
+				where: eq(server.organizationId, orgId),
+			}).catch(() => []);
+
+			const restarted: { name: string; containerId: string; serverName: string; reason: string }[] = [];
+
+			// 1. Inspect local containers
+			try {
+				const localStats = await getAllContainerStats(undefined);
+				for (const c of localStats) {
+					const isInfra =
+						c.name?.includes("dokploy-postgres") ||
+						c.name?.includes("traefik") ||
+						c.name?.includes("dokploy");
+					if (isInfra) continue;
+
+					const cpuVal = parseFloat(c.CPUPerc?.replace("%", "") || "0");
+					const isHighCpu = cpuVal > 85;
+					const isUnhealthy =
+						c.state === "restarting" ||
+						c.state === "dead" ||
+						c.health === "unhealthy";
+
+					if (isHighCpu || isUnhealthy) {
+						try {
+							const targetDocker = await getRemoteDocker(undefined);
+							const container = targetDocker.getContainer(c.id);
+							await container.restart();
+							restarted.push({
+								name: c.name || c.id.slice(0, 12),
+								containerId: c.id,
+								serverName: "Local Controller",
+								reason: isHighCpu
+									? `CPU quá tải (${c.CPUPerc})`
+									: `Trạng thái: ${c.state || c.health || "Lỗi"}`,
+							});
+						} catch {
+							// skip on individual restart error
+						}
+					}
+				}
+			} catch {}
+
+			// 2. Inspect remote servers concurrently
+			for (const srv of remoteServers) {
+				try {
+					const remoteStats = await getAllContainerStats(srv.serverId);
+					for (const c of remoteStats) {
+						const isInfra =
+							c.name?.includes("dokploy-postgres") ||
+							c.name?.includes("traefik") ||
+							c.name?.includes("dokploy");
+						if (isInfra) continue;
+
+						const cpuVal = parseFloat(c.CPUPerc?.replace("%", "") || "0");
+						const isHighCpu = cpuVal > 85;
+						const isUnhealthy =
+							c.state === "restarting" ||
+							c.state === "dead" ||
+							c.health === "unhealthy";
+
+						if (isHighCpu || isUnhealthy) {
+							try {
+								const targetDocker = await getRemoteDocker(srv.serverId);
+								const container = targetDocker.getContainer(c.id);
+								await container.restart();
+								restarted.push({
+									name: c.name || c.id.slice(0, 12),
+									containerId: c.id,
+									serverName: srv.name,
+									reason: isHighCpu
+										? `CPU quá tải (${c.CPUPerc})`
+										: `Trạng thái: ${c.state || c.health || "Lỗi"}`,
+								});
+							} catch {
+								// skip
+							}
+						}
+					}
+				} catch {}
+			}
+
+			return {
+				success: true,
+				restartedCount: restarted.length,
+				restarted,
+			};
 		}),
 
 	/**

@@ -69,6 +69,85 @@ export interface TopologyEdge {
 	animated?: boolean;
 }
 
+const TrafficPulseConnector = ({
+	pulseColor = "#06b6d4",
+	enabled = true,
+}: {
+	fromColor?: string;
+	toColor?: string;
+	pulseColor?: string;
+	enabled?: boolean;
+}) => {
+	return (
+		<div className="flex flex-col items-center py-1 relative">
+			<svg className="w-6 h-10 overflow-visible" viewBox="0 0 24 40">
+				<line
+					x1="12"
+					y1="0"
+					x2="12"
+					y2="32"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeOpacity="0.2"
+				/>
+				{enabled && (
+					<>
+						<line
+							x1="12"
+							y1="0"
+							x2="12"
+							y2="32"
+							stroke={pulseColor}
+							strokeWidth="2"
+							strokeDasharray="4 6"
+							strokeOpacity="0.75"
+						/>
+						{/* Particle 1 */}
+						<circle r="2.5" fill={pulseColor}>
+							<animate
+								attributeName="cy"
+								from="0"
+								to="32"
+								dur="1.2s"
+								repeatCount="indefinite"
+							/>
+							<animate
+								attributeName="opacity"
+								values="0;1;1;0"
+								dur="1.2s"
+								repeatCount="indefinite"
+							/>
+						</circle>
+						{/* Particle 2 */}
+						<circle r="2" fill="#ffffff">
+							<animate
+								attributeName="cy"
+								from="0"
+								to="32"
+								dur="1.2s"
+								begin="0.6s"
+								repeatCount="indefinite"
+							/>
+							<animate
+								attributeName="opacity"
+								values="0;1;1;0"
+								dur="1.2s"
+								begin="0.6s"
+								repeatCount="indefinite"
+							/>
+						</circle>
+					</>
+				)}
+				<polygon
+					points="8,32 16,32 12,38"
+					fill={enabled ? pulseColor : "currentColor"}
+					opacity={enabled ? 0.9 : 0.4}
+				/>
+			</svg>
+		</div>
+	);
+};
+
 export interface InfrastructureHost {
 	id: string;
 	name: string;
@@ -135,6 +214,7 @@ export const TopologyCanvas = ({
 	const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [activeTier, setActiveTier] = useState<string>("all");
+	const [trafficPulseEnabled, setTrafficPulseEnabled] = useState<boolean>(true);
 
 	// Group nodes by tier for pipeline view
 	const tiers = useMemo(() => {
@@ -275,6 +355,31 @@ export const TopologyCanvas = ({
 							className="pl-8 h-8 text-xs bg-background/80 border-border/70"
 						/>
 					</div>
+
+					{/* Realtime Traffic Pulse Toggle */}
+					<Button
+						variant={trafficPulseEnabled ? "secondary" : "outline"}
+						size="sm"
+						className={`h-7 text-xs px-2.5 gap-1.5 font-medium border transition-all ${
+							trafficPulseEnabled
+								? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20"
+								: "text-muted-foreground border-border/70 hover:bg-muted"
+						}`}
+						onClick={() => setTrafficPulseEnabled(!trafficPulseEnabled)}
+						title="Bật/Tắt hiệu ứng mô phỏng lưu lượng truy cập thực tế (Traffic Pulse)"
+					>
+						<span className="relative flex h-2 w-2">
+							{trafficPulseEnabled && (
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+							)}
+							<span
+								className={`relative inline-flex rounded-full h-2 w-2 ${
+									trafficPulseEnabled ? "bg-cyan-500" : "bg-muted-foreground/50"
+								}`}
+							/>
+						</span>
+						<span>Traffic Pulse</span>
+					</Button>
 				</div>
 
 				{/* Zoom & Canvas Actions */}
@@ -459,8 +564,14 @@ export const TopologyCanvas = ({
 															<span className="text-foreground group-hover:text-cyan-500">
 																{dom.host}
 															</span>
-															<span className="text-[9px] text-muted-foreground">
+															<span className="text-[9px] text-muted-foreground flex items-center gap-1">
 																➔ {dom.targetName}
+																{trafficPulseEnabled && (
+																	<span className="relative flex h-1.5 w-1.5 shrink-0 ml-0.5">
+																		<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+																		<span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
+																	</span>
+																)}
 															</span>
 														</div>
 													))}
@@ -535,15 +646,26 @@ export const TopologyCanvas = ({
 															</div>
 
 															{item.domains && item.domains.length > 0 && (
-																<div className="mt-2 pt-1.5 border-t border-border/40 flex items-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-400 font-mono truncate">
-																	<Globe className="size-2.5 shrink-0" />
-																	<span className="truncate">
-																		{item.domains[0]}
-																	</span>
-																	{item.domains.length > 1 && (
-																		<span className="text-[9px] text-muted-foreground">
-																			+{item.domains.length - 1}
+																<div className="mt-2 pt-1.5 border-t border-border/40 flex items-center justify-between text-[10px] text-cyan-600 dark:text-cyan-400 font-mono truncate">
+																	<div className="flex items-center gap-1 truncate">
+																		<Globe className="size-2.5 shrink-0" />
+																		<span className="truncate">
+																			{item.domains[0]}
 																		</span>
+																		{item.domains.length > 1 && (
+																			<span className="text-[9px] text-muted-foreground">
+																				+{item.domains.length - 1}
+																			</span>
+																		)}
+																	</div>
+																	{trafficPulseEnabled && (
+																		<div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[9px] font-sans font-medium text-cyan-600 dark:text-cyan-400 shrink-0">
+																			<span className="relative flex h-1.5 w-1.5">
+																				<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+																				<span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
+																			</span>
+																			<span>Live Flow</span>
+																		</div>
 																	)}
 																</div>
 															)}
@@ -657,11 +779,11 @@ export const TopologyCanvas = ({
 								))}
 							</div>
 
-							{/* Connector Down */}
-							<div className="flex flex-col items-center text-muted-foreground/40 py-1">
-								<div className="w-0.5 h-6 bg-linear-to-b from-cyan-500/60 to-blue-500/60" />
-								<ArrowDown className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-							</div>
+							{/* Animated Traffic Pulse Connector Down */}
+							<TrafficPulseConnector
+								pulseColor="#06b6d4"
+								enabled={trafficPulseEnabled}
+							/>
 						</div>
 					)}
 
@@ -705,11 +827,11 @@ export const TopologyCanvas = ({
 								))}
 							</div>
 
-							{/* Connector Down */}
-							<div className="flex flex-col items-center text-muted-foreground/40 py-1">
-								<div className="w-0.5 h-6 bg-linear-to-b from-blue-500/60 to-purple-500/60" />
-								<ArrowDown className="h-4 w-4 text-purple-500 dark:text-purple-400" />
-							</div>
+							{/* Animated Traffic Pulse Connector Down */}
+							<TrafficPulseConnector
+								pulseColor="#a855f7"
+								enabled={trafficPulseEnabled}
+							/>
 						</div>
 					)}
 
@@ -753,11 +875,11 @@ export const TopologyCanvas = ({
 								))}
 							</div>
 
-							{/* Connector Down */}
-							<div className="flex flex-col items-center text-muted-foreground/40 py-1">
-								<div className="w-0.5 h-6 bg-linear-to-b from-purple-500/60 to-emerald-500/60" />
-								<ArrowDown className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
-							</div>
+							{/* Animated Traffic Pulse Connector Down */}
+							<TrafficPulseConnector
+								pulseColor="#10b981"
+								enabled={trafficPulseEnabled}
+							/>
 						</div>
 					)}
 

@@ -176,17 +176,34 @@ export const UpdateServer = ({
 
 				{/* Update available state */}
 				{isUpdateAvailable && latestVersion && (
-					<div className="mb-8">
-						<div className="inline-flex items-center gap-2 rounded-lg px-3 py-2 border border-emerald-500/30 bg-emerald-500/10 mb-4 w-full">
-							<div className="flex items-center gap-1.5">
-								<Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-								<span className="text font-medium text-emerald-600 dark:text-emerald-400">
-									New version available:
+					<div className="mb-6">
+						<div className="flex flex-col gap-2.5 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 mb-4 w-full">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Download className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+									<span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+										Đã có phiên bản nâng cấp mới
+									</span>
+								</div>
+								<span className="relative flex h-2 w-2">
+									<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+									<span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
 								</span>
 							</div>
-							<span className="text font-semibold text-emerald-700 dark:text-emerald-300">
-								{latestVersion}
-							</span>
+
+							<div className="flex items-center justify-between p-3 rounded-lg bg-background/80 border border-border/50 text-xs">
+								<div className="flex flex-col">
+									<span className="text-[10px] text-muted-foreground uppercase font-medium">Bản hiện tại</span>
+									<span className="font-mono font-bold text-foreground text-sm">{dokployVersion || "v1.0.3"}</span>
+								</div>
+								<div className="flex items-center gap-1.5 text-emerald-500 font-bold text-base px-2">
+									<span>➔</span>
+								</div>
+								<div className="flex flex-col items-end">
+									<span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-medium">Bản nâng cấp</span>
+									<span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">{latestVersion}</span>
+								</div>
+							</div>
 						</div>
 
 						<div className="space-y-4 text-muted-foreground">
@@ -279,7 +296,11 @@ export const UpdateServer = ({
 							Cancel
 						</Button>
 						{isUpdateAvailable ? (
-							<UpdateWebServer buttonClassName="w-auto" />
+							<UpdateWebServer
+								buttonClassName="w-auto"
+								fromVersion={dokployVersion}
+								targetVersion={latestVersion}
+							/>
 						) : (
 							<Button
 								variant="secondary"

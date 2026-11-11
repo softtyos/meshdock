@@ -696,10 +696,20 @@ export const settingsRouter = createTRPCRouter({
 					resourceName: "meshdock-version",
 				});
 
-				return { ok: true, version: targetTag };
+				return {
+					ok: true,
+					version: targetTag,
+					targetVersion: targetTag,
+					currentVersion: packageInfo.version,
+				};
 			}
 
-			return { ok: true, version: data.latestVersion || packageInfo.version };
+			return {
+				ok: true,
+				version: data.latestVersion || packageInfo.version,
+				targetVersion: data.latestVersion || packageInfo.version,
+				currentVersion: packageInfo.version,
+			};
 		}),
 
 	getDokployVersion: protectedProcedure.query(() => {

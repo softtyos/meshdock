@@ -4,6 +4,7 @@ import {
 	HardDriveDownload,
 	Loader2,
 	RefreshCw,
+	Sparkles,
 	XCircle,
 } from "lucide-react";
 import { useState } from "react";
@@ -34,6 +35,13 @@ type HealthResult = {
 };
 
 type ModalState = "idle" | "checking" | "results" | "updating";
+type UpdatePhase = "dispatching" | "pulling" | "restarting" | "ready";
+
+interface Props {
+	buttonClassName?: string;
+	fromVersion?: string;
+	targetVersion?: string;
+}
 
 const ServiceStatusItem = ({
 	name,
@@ -44,9 +52,9 @@ const ServiceStatusItem = ({
 }) => (
 	<div className="flex items-center gap-2">
 		{service.status === "healthy" ? (
-			<CheckCircle2 className="h-4 w-4 text-green-500" />
+			<CheckCircle2 className="h-4 w-4 text-emerald-500" />
 		) : (
-			<XCircle className="h-4 w-4 text-red-500" />
+			<XCircle className="h-4 w-4 text-rose-500" />
 		)}
 		<span className="text-sm font-medium">{name}</span>
 		{service.status === "unhealthy" && service.message && (
@@ -57,10 +65,12 @@ const ServiceStatusItem = ({
 
 export const UpdateWebServer = ({
 	buttonClassName,
-}: {
-	buttonClassName?: string;
-}) => {
+	fromVersion,
+	targetVersion: propTargetVersion,
+}: Props) => {
 	const [modalState, setModalState] = useState<ModalState>("idle");
+	const [updatePhase, setUpdatePhase] = useState<UpdatePhase>("dispatching");
+	const [pollingAttempts, setPollingAttempts] = useState<number>(0);
 	const [open, setOpen] = useState(false);
 	const [healthResult, setHealthResult] = useState<HealthResult | null>(null);
 
@@ -92,12 +102,14 @@ export const UpdateWebServer = ({
 		healthResult.traefik.status === "healthy";
 
 	const checkIsUpdateFinished = async (
-		targetVersion?: string,
+		effectiveTarget?: string,
+		effectiveFrom?: string,
 		attempts = 0,
 	) => {
-		if (attempts > 50) {
+		setPollingAttempts(attempts);
+		if (attempts > 60) {
 			toast.error(
-				"Thời gian chờ cập nhật quá lâu. Vui lòng kiểm tra lại dịch vụ hoặc tải lại trang.",
+				"Thời gian chờ nâng cấp kéo dài hơn dự kiến. Dịch vụ có thể đã cập nhật xong, vui lòng tải lại trang bằng phím F5 để kiểm tra.",
 			);
 			setModalState("idle");
 			return;
@@ -108,7 +120,10 @@ export const UpdateWebServer = ({
 				cache: "no-store",
 			});
 			if (!response.ok) {
-				throw new Error("Health check failed");
+				// Server is shutting down or returning 502/503 during container restart -> good, Phase 2!
+				setUpdatePhase("restarting");
+				await new Promise((resolve) => setTimeout(resolve, 3000));
+				return checkIsUpdateFinished(effectiveTarget, effectiveFrom, attempts + 1);
 			}
 
 			const data = (await response.json().catch(() => ({}))) as {
@@ -116,38 +131,60 @@ export const UpdateWebServer = ({
 				version?: string;
 			};
 
-			// If targetVersion is known, wait until the running container reports the new version
-			if (targetVersion && data?.version) {
-				const cleanTarget = targetVersion.replace(/^v/, "").trim();
-				const cleanCurrent = data.version.replace(/^v/, "").trim();
-				if (cleanCurrent !== cleanTarget) {
-					// Previous container still serving, wait for swarm rolling replacement
-					await new Promise((resolve) => setTimeout(resolve, 3000));
-					return checkIsUpdateFinished(targetVersion, attempts + 1);
-				}
+			const cleanCurrent = data?.version?.replace(/^v/, "").trim();
+			const cleanFrom = effectiveFrom?.replace(/^v/, "").trim();
+			const cleanTarget = effectiveTarget?.replace(/^v/, "").trim();
+
+			// CASE 1: Old container is still serving while Docker is downloading layers
+			if (cleanFrom && cleanCurrent === cleanFrom) {
+				setUpdatePhase("pulling");
+				await new Promise((resolve) => setTimeout(resolve, 3000));
+				return checkIsUpdateFinished(effectiveTarget, effectiveFrom, attempts + 1);
 			}
 
+			// CASE 2: Target is specified (not "latest") and current does not match yet
+			if (
+				cleanTarget &&
+				cleanTarget !== "latest" &&
+				cleanCurrent &&
+				cleanCurrent !== cleanTarget
+			) {
+				setUpdatePhase("restarting");
+				await new Promise((resolve) => setTimeout(resolve, 3000));
+				return checkIsUpdateFinished(effectiveTarget, effectiveFrom, attempts + 1);
+			}
+
+			// CASE 3: SUCCESS! New container is live!
+			setUpdatePhase("ready");
 			await utils.settings.getDokployVersion.invalidate();
 
+			const finalVersion = data?.version || effectiveTarget || "mới";
 			toast.success(
-				`Hệ thống đã nâng cấp thành công lên phiên bản ${data?.version || targetVersion || "mới"}! Đang tải lại trang...`,
+				`Hệ thống đã nâng cấp thành công lên phiên bản ${finalVersion}! Đang làm mới bảng điều khiển...`,
 			);
 
 			setTimeout(() => {
-				window.location.reload();
-			}, 1500);
+				window.location.href = window.location.pathname + "?v=" + Date.now();
+			}, 1200);
 		} catch {
+			// Network error / connection refused while container is restarting
+			setUpdatePhase("restarting");
 			await new Promise((resolve) => setTimeout(resolve, 3000));
-			void checkIsUpdateFinished(targetVersion, attempts + 1);
+			return checkIsUpdateFinished(effectiveTarget, effectiveFrom, attempts + 1);
 		}
 	};
 
 	const handleConfirm = async () => {
 		setModalState("updating");
-		let targetTag: string | undefined;
+		setUpdatePhase("dispatching");
+		setPollingAttempts(0);
+		let targetTag = propTargetVersion;
+		let fromTag = fromVersion;
+
 		try {
 			const res = await updateServer();
-			targetTag = res?.version;
+			if (res?.targetVersion) targetTag = res.targetVersion;
+			if (res?.currentVersion) fromTag = res.currentVersion;
 		} catch (error) {
 			console.log(
 				"Server update dispatched (connection drop during restart is normal):",
@@ -155,9 +192,10 @@ export const UpdateWebServer = ({
 			);
 		}
 
-		// Initial wait before polling to allow docker pull / service update to initialize
-		await new Promise((resolve) => setTimeout(resolve, 5000));
-		await checkIsUpdateFinished(targetTag);
+		setUpdatePhase("pulling");
+		// Initial wait before polling to allow docker service command to be dispatched
+		await new Promise((resolve) => setTimeout(resolve, 4000));
+		await checkIsUpdateFinished(targetTag, fromTag);
 	};
 
 	const handleClose = () => {
@@ -178,13 +216,13 @@ export const UpdateWebServer = ({
 				>
 					<HardDriveDownload className="h-4 w-4" />
 					<span className="absolute -right-1 -top-2 flex h-3 w-3">
-						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-						<span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+						<span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
 					</span>
 					Nâng cấp ngay
 				</Button>
 			</AlertDialogTrigger>
-			<AlertDialogContent>
+			<AlertDialogContent className="max-w-md">
 				<AlertDialogHeader>
 					<AlertDialogTitle>
 						{modalState === "idle" && "Xác nhận nâng cấp hệ thống"}
@@ -226,9 +264,9 @@ export const UpdateWebServer = ({
 									</div>
 
 									{!allHealthy && (
-										<div className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3">
-											<AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-											<span className="text-sm text-yellow-600 dark:text-yellow-400">
+										<div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+											<AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+											<span className="text-sm text-amber-600 dark:text-amber-400">
 												Một số dịch vụ chưa tối ưu. Bạn vẫn có thể tiếp tục tiến trình nâng cấp.
 											</span>
 										</div>
@@ -243,22 +281,79 @@ export const UpdateWebServer = ({
 							)}
 
 							{modalState === "results" && !healthResult && (
-								<div className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3">
-									<AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-									<span className="text-sm text-yellow-600 dark:text-yellow-400">
+								<div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+									<AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+									<span className="text-sm text-amber-600 dark:text-amber-400">
 										Không thể kiểm tra dịch vụ trước. Bạn vẫn có thể tiếp tục tiến hành nâng cấp.
 									</span>
 								</div>
 							)}
 
 							{modalState === "updating" && (
-								<div className="flex flex-col items-center justify-center py-4 gap-3">
-									<div className="flex items-center gap-2 text-primary font-medium">
-										<Loader2 className="animate-spin h-5 w-5" />
-										<span>Đang tải image mới và khởi động lại dịch vụ...</span>
+								<div className="flex flex-col gap-4 py-3">
+									<div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border/60 bg-muted/30">
+										{/* Step 1: Pre-pulling image */}
+										<div className="flex items-center gap-3">
+											{updatePhase === "dispatching" || updatePhase === "pulling" ? (
+												<Loader2 className="h-4 w-4 animate-spin text-cyan-500 shrink-0" />
+											) : (
+												<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+											)}
+											<div className="flex flex-col">
+												<span className="text-xs font-semibold text-foreground">
+													1. Tải Docker Image mới từ Docker Hub
+												</span>
+												<span className="text-[11px] text-muted-foreground">
+													{updatePhase === "pulling"
+														? `Đang tải image ngầm (~30 - 60s)... (${pollingAttempts * 3}s)`
+														: "Đã tải xong image"}
+												</span>
+											</div>
+										</div>
+
+										{/* Step 2: Restarting container */}
+										<div className="flex items-center gap-3">
+											{updatePhase === "restarting" ? (
+												<Loader2 className="h-4 w-4 animate-spin text-amber-500 shrink-0" />
+											) : updatePhase === "ready" ? (
+												<CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+											) : (
+												<div className="h-4 w-4 rounded-full border border-border shrink-0" />
+											)}
+											<div className="flex flex-col">
+												<span className="text-xs font-semibold text-foreground">
+													2. Khởi động lại dịch vụ Meshdock
+												</span>
+												<span className="text-[11px] text-muted-foreground">
+													{updatePhase === "restarting"
+														? "Docker Swarm đang khởi chạy container mới..."
+														: "Chờ thay thế container"}
+												</span>
+											</div>
+										</div>
+
+										{/* Step 3: Refreshing page */}
+										<div className="flex items-center gap-3">
+											{updatePhase === "ready" ? (
+												<Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
+											) : (
+												<div className="h-4 w-4 rounded-full border border-border shrink-0" />
+											)}
+											<div className="flex flex-col">
+												<span className="text-xs font-semibold text-foreground">
+													3. Đồng bộ & Làm mới Bảng Điều Khiển
+												</span>
+												<span className="text-[11px] text-muted-foreground">
+													{updatePhase === "ready"
+														? "Đã sẵn sàng! Đang làm mới trang..."
+														: "Tự động tải lại giao diện khi hoàn tất"}
+												</span>
+											</div>
+										</div>
 									</div>
+
 									<p className="text-xs text-muted-foreground text-center">
-										Bảng điều khiển sẽ tự động làm mới trang ngay khi hoàn tất. Quá trình mất khoảng 30 - 60 giây.
+										Vui lòng giữ nguyên tab trình duyệt. Hệ thống sẽ tự động chuyển hướng ngay khi dịch vụ mới phản hồi.
 									</p>
 								</div>
 							)}
