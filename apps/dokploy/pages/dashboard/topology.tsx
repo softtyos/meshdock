@@ -103,6 +103,7 @@ const TopologyPage = () => {
 				<TopologyCanvas
 					nodes={topologyData?.nodes || []}
 					edges={topologyData?.edges || []}
+					infrastructure={topologyData?.infrastructure || []}
 					onRefresh={() => refetch()}
 				/>
 			)}

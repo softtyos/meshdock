@@ -618,18 +618,24 @@ networks:
 				nodes.push({
 					id: domId,
 					label: d.host,
-					sublabel: d.https ? "HTTPS (Let's Encrypt)" : "HTTP (Port " + d.port + ")",
+					sublabel: d.https ? "HTTPS (Let's Encrypt)" : `HTTP (Port ${d.port})`,
 					tier: "ingress",
 					type: "domain",
 					status: "healthy",
 					stats: { ports: String(d.port) },
 				});
 
+				const targetAppId = d.applicationId
+					? `app-${d.applicationId}`
+					: d.composeId
+						? `compose-${d.composeId}`
+						: "traefik-ingress";
+
 				edges.push({
-					id: `edge-${domId}-traefik`,
+					id: `edge-${domId}-${targetAppId}`,
 					source: domId,
-					target: "traefik-ingress",
-					label: "Ingress",
+					target: targetAppId,
+					label: d.https ? "HTTPS" : "HTTP",
 					animated: true,
 				});
 			}
@@ -658,18 +664,18 @@ networks:
 		nodes.push({
 			id: primaryClusterId,
 			label: "Docker Swarm (Primary Cluster)",
-			sublabel: "Manager Node + Overlay Mesh",
+			sublabel: "Manager Node + Overlay Mesh (application.softty.net)",
 			tier: "cluster",
 			type: "swarm-cluster",
 			status: "healthy",
-			stats: { cpu: 10, memory: "8 GB", replicas: "Active Leader" },
+			stats: { cpu: 8, memory: "23.5 GB", replicas: "Active Leader" },
 		});
 
 		edges.push({
 			id: `edge-traefik-${primaryClusterId}`,
 			source: "traefik-ingress",
 			target: primaryClusterId,
-			label: "Overlay Network",
+			label: "Local Mesh",
 			animated: true,
 		});
 
@@ -687,8 +693,8 @@ networks:
 			});
 
 			edges.push({
-				id: `edge-traefik-${srvNodeId}`,
-				source: "traefik-ingress",
+				id: `edge-primary-${srvNodeId}`,
+				source: primaryClusterId,
 				target: srvNodeId,
 				label: "WireGuard/SSH",
 				animated: false,
@@ -751,6 +757,8 @@ networks:
 
 		if (allDbs.length > 0) {
 			for (const dbItem of allDbs) {
+				const parentTarget = dbItem.serverId ? `server-${dbItem.serverId}` : primaryClusterId;
+
 				nodes.push({
 					id: dbItem.dbId,
 					label: dbItem.name,
@@ -760,10 +768,10 @@ networks:
 					status: dbItem.applicationStatus === "done" ? "healthy" : "warning",
 				});
 
-				// Connect to primary cluster
+				// Connect to host server
 				edges.push({
-					id: `edge-${primaryClusterId}-${dbItem.dbId}`,
-					source: primaryClusterId,
+					id: `edge-${parentTarget}-${dbItem.dbId}`,
+					source: parentTarget,
 					target: dbItem.dbId,
 					label: "Internal VPC",
 					animated: false,
@@ -789,12 +797,136 @@ networks:
 			animated: false,
 		});
 
+		// Build Server Infrastructure Racks & Workload Allocation
+		const infrastructure = [
+			{
+				id: primaryClusterId,
+				name: "application.softty.net",
+				ip: "217.217.255.120",
+				role: "Primary Cluster / Controller",
+				type: "swarm-manager",
+				status: "online",
+				isLocal: true,
+				specs: { cores: 8, memory: "23.5 GB" },
+				ingress: [
+					{
+						id: "traefik-ingress",
+						name: "Traefik Ingress Gateway",
+						type: "gateway",
+						ports: "80, 443",
+					},
+				],
+				domains: domainsList.map((d) => ({
+					id: d.domainId,
+					host: d.host,
+					port: d.port,
+					https: d.https,
+					targetType: d.applicationId ? "application" : d.composeId ? "compose" : "gateway",
+					targetName:
+						appsList.find((a) => a.applicationId === d.applicationId)?.name ||
+						composeList.find((c) => c.composeId === d.composeId)?.name ||
+						"Ingress Gateway",
+				})),
+				workloads: [
+					...appsList
+						.filter((a) => !a.serverId)
+						.map((a) => ({
+							id: `app-${a.applicationId}`,
+							name: a.name,
+							subname: a.appName,
+							type: "application",
+							status: a.applicationStatus === "done" ? "healthy" : "warning",
+							domains: domainsList
+								.filter((d) => d.applicationId === a.applicationId)
+								.map((d) => d.host),
+						})),
+					...composeList
+						.filter((c) => !c.serverId)
+						.map((c) => ({
+							id: `compose-${c.composeId}`,
+							name: c.name,
+							subname: "Docker Compose Stack",
+							type: "compose",
+							status: c.composeStatus === "done" ? "healthy" : "warning",
+							domains: domainsList
+								.filter((d) => d.composeId === c.composeId)
+								.map((d) => d.host),
+						})),
+				],
+				databases: allDbs
+					.filter((d) => !d.serverId)
+					.map((d) => ({
+						id: d.dbId,
+						name: d.name,
+						type: d.dbType,
+						status: d.applicationStatus === "done" ? "healthy" : "warning",
+					})),
+				volumes: [
+					{
+						id: "storage-volumes",
+						name: "Mesh Persistent Volumes",
+						sublabel: "/etc/dokploy & Docker Volumes",
+						type: "volume",
+						status: "healthy",
+					},
+				],
+			},
+			...serversList.map((srv) => ({
+				id: `server-${srv.serverId}`,
+				name: srv.name,
+				ip: srv.ipAddress,
+				role: "Standalone Dedicated VPS",
+				type: "standalone",
+				status: srv.serverStatus === "active" ? "online" : "offline",
+				isLocal: false,
+				specs: { cores: 8, memory: "23.5 GB" },
+				ingress: [],
+				domains: [],
+				workloads: [
+					...appsList
+						.filter((a) => a.serverId === srv.serverId)
+						.map((a) => ({
+							id: `app-${a.applicationId}`,
+							name: a.name,
+							subname: a.appName,
+							type: "application",
+							status: a.applicationStatus === "done" ? "healthy" : "warning",
+							domains: domainsList
+								.filter((d) => d.applicationId === a.applicationId)
+								.map((d) => d.host),
+						})),
+					...composeList
+						.filter((c) => c.serverId === srv.serverId)
+						.map((c) => ({
+							id: `compose-${c.composeId}`,
+							name: c.name,
+							subname: "Docker Compose Stack",
+							type: "compose",
+							status: c.composeStatus === "done" ? "healthy" : "warning",
+							domains: domainsList
+								.filter((d) => d.composeId === c.composeId)
+								.map((d) => d.host),
+						})),
+				],
+				databases: allDbs
+					.filter((d) => d.serverId === srv.serverId)
+					.map((d) => ({
+						id: d.dbId,
+						name: d.name,
+						type: d.dbType,
+						status: d.applicationStatus === "done" ? "healthy" : "warning",
+					})),
+				volumes: [],
+			})),
+		];
+
 		return {
 			nodes,
 			edges,
+			infrastructure,
 			summary: {
 				ingressCount: nodes.filter((n) => n.tier === "ingress").length,
-				clustersCount: nodes.filter((n) => n.tier === "cluster").length,
+				clustersCount: infrastructure.length,
 				servicesCount: nodes.filter((n) => n.tier === "service").length,
 				databasesCount: nodes.filter((n) => n.tier === "data").length,
 			},
