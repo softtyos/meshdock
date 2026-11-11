@@ -22,6 +22,7 @@ import { appRouter } from "@/server/api/root";
 import type { FleetNodeInfo } from "@/server/api/routers/fleet";
 import { api } from "@/utils/api";
 
+import { FleetBulkActions } from "@/components/dashboard/fleet/fleet-bulk-actions";
 import { FleetKpis } from "@/components/dashboard/fleet/fleet-kpis";
 import { FleetMatrix } from "@/components/dashboard/fleet/fleet-matrix";
 import { FleetNodeDrawer } from "@/components/dashboard/fleet/fleet-node-drawer";
@@ -79,6 +80,7 @@ const FleetPage = () => {
 					</Link>
 					<SwarmGlobalAgentModal />
 					<HandleServers />
+					<FleetBulkActions />
 					<Button
 						variant="outline"
 						size="sm"
