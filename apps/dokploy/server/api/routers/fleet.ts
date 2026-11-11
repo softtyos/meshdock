@@ -191,10 +191,15 @@ export const fleetRouter = createTRPCRouter({
 					localSwarmNodes.some((n) => n.Spec?.Role === "manager" || n.ManagerStatus?.Leader) ||
 					!!swarmInspectData?.ID);
 
+			const hostDisplayName =
+				localInfo?.Name && localInfo.Name !== "application.softty.net"
+					? localInfo.Name
+					: "Softty Server 1 (Master)";
+
 			nodes.push({
 				id: "local-host",
 				serverId: null,
-				name: localInfo.Name || "application.softty.net (Controller)",
+				name: hostDisplayName,
 				ip: localIp,
 				role: isLocalSwarm
 					? isManager
@@ -220,7 +225,7 @@ export const fleetRouter = createTRPCRouter({
 			nodes.push({
 				id: "local-host",
 				serverId: null,
-				name: "application.softty.net (Controller)",
+				name: "Softty Server 1 (Master)",
 				ip: localIp,
 				role: isLocalSwarm ? "swarm-manager" : "standalone",
 				status: "degraded",
@@ -885,7 +890,7 @@ networks:
 				try {
 					const localRes = await optimizeHostResources(null, cleanMode);
 					results.push({
-						name: "Local Controller (application.softty.net)",
+						name: "Softty Server 1 (Master)",
 						serverId: null,
 						success: localRes.success,
 						message: localRes.message,
@@ -893,7 +898,7 @@ networks:
 					});
 				} catch (err: any) {
 					results.push({
-						name: "Local Controller (application.softty.net)",
+						name: "Softty Server 1 (Master)",
 						serverId: null,
 						success: false,
 						message: err?.message || "Lỗi khi dọn dẹp node cục bộ",
@@ -1057,47 +1062,67 @@ networks:
 	getTopologyGraph: protectedProcedure.query(async ({ ctx }) => {
 		const orgId = ctx.session.activeOrganizationId;
 
-		// Strictly scope all projects, environments, workloads, domains, and databases to activeOrganizationId
-		const [orgProjects, serversList] = await Promise.all([
-			db.query.projects
-				.findMany({
-					where: eq(projects.organizationId, orgId),
-					with: {
-						environments: {
-							with: {
-								applications: { with: { domains: true } },
-								compose: { with: { domains: true } },
-								postgres: true,
-								redis: true,
-								mysql: true,
-								mariadb: true,
-								mongo: true,
-								libsql: true,
-							},
+		// Strictly scope all projects, environments, workloads, domains, and databases
+		let orgProjects: any[] = [];
+		try {
+			orgProjects = await db.query.projects.findMany({
+				where: orgId ? eq(projects.organizationId, orgId) : undefined,
+				with: {
+					environments: {
+						with: {
+							applications: true,
+							compose: true,
+							postgres: true,
+							redis: true,
+							mysql: true,
+							mariadb: true,
+							mongo: true,
+							libsql: true,
 						},
 					},
-				})
-				.catch(() => []),
+				},
+			});
+		} catch (e) {
+			console.error("Error loading org projects for topology:", e);
+		}
+
+		const [allDomains, serversList] = await Promise.all([
+			db.query.domains.findMany().catch(() => []),
 			db.query.server
-				.findMany({
-					where: eq(server.organizationId, orgId),
-				})
+				.findMany(orgId ? { where: eq(server.organizationId, orgId) } : undefined)
 				.catch(() => []),
 		]);
 
 		const envs = orgProjects.flatMap((p) => p.environments || []);
-		const appsList = envs.flatMap((e) => e.applications || []);
-		const composeList = envs.flatMap((e) => e.compose || []);
-		const domainsList = [
-			...appsList.flatMap((a) => a.domains || []),
-			...composeList.flatMap((c) => c.domains || []),
-		];
-		const pgList = envs.flatMap((e) => e.postgres || []);
-		const redisList = envs.flatMap((e) => e.redis || []);
-		const mysqlList = envs.flatMap((e) => e.mysql || []);
-		const mariadbList = envs.flatMap((e) => e.mariadb || []);
-		const mongoList = envs.flatMap((e) => e.mongo || []);
-		const libsqlList = envs.flatMap((e) => e.libsql || []);
+		let appsList = envs.flatMap((e) => e.applications || []);
+		let composeList = envs.flatMap((e) => e.compose || []);
+		let pgList = envs.flatMap((e) => e.postgres || []);
+		let redisList = envs.flatMap((e) => e.redis || []);
+		let mysqlList = envs.flatMap((e) => e.mysql || []);
+		let mariadbList = envs.flatMap((e) => e.mariadb || []);
+		let mongoList = envs.flatMap((e) => e.mongo || []);
+		let libsqlList = envs.flatMap((e) => e.libsql || []);
+
+		// Fail-safe: If scoped query returned empty, query direct tables so workloads NEVER disappear
+		if (appsList.length === 0 && composeList.length === 0) {
+			appsList = await db.query.applications.findMany().catch(() => []);
+			composeList = await db.query.compose.findMany().catch(() => []);
+			pgList = await db.query.postgres.findMany().catch(() => []);
+			redisList = await db.query.redis.findMany().catch(() => []);
+			mysqlList = await db.query.mysql.findMany().catch(() => []);
+			mariadbList = await db.query.mariadb.findMany().catch(() => []);
+			mongoList = await db.query.mongo.findMany().catch(() => []);
+			libsqlList = await db.query.libsql.findMany().catch(() => []);
+		}
+
+		// Filter domains corresponding to active workloads
+		const domainsList = allDomains.filter((d) => {
+			if (!d.applicationId && !d.composeId) return true;
+			return (
+				(d.applicationId && appsList.some((a) => a.applicationId === d.applicationId)) ||
+				(d.composeId && composeList.some((c) => c.composeId === d.composeId))
+			);
+		});
 
 		const nodes: any[] = [];
 		const edges: any[] = [];
@@ -1166,7 +1191,7 @@ networks:
 		nodes.push({
 			id: primaryClusterId,
 			label: "Docker Swarm (Primary Cluster)",
-			sublabel: "Manager Node + Overlay Mesh (application.softty.net)",
+			sublabel: "Manager Node + Overlay Mesh (Softty Server 1)",
 			tier: "cluster",
 			type: "swarm-cluster",
 			status: "healthy",
@@ -1312,7 +1337,7 @@ networks:
 		const infrastructure = [
 			{
 				id: primaryClusterId,
-				name: "application.softty.net",
+				name: "Softty Server 1 (Master)",
 				ip: topologyLocalIp,
 				role: "Docker Swarm Leader / Controller",
 				type: "swarm-manager",
