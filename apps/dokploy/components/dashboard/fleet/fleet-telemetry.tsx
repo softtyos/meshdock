@@ -111,7 +111,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 						</Badge>
 					</h3>
 					<p className="text-xs text-muted-foreground mt-0.5">
-						Nguồn dữ liệu phần cứng trực tiếp: {nodeName || "Local Controller (application.softty.net)"} • Chu kỳ lấy mẫu 10s
+						Nguồn dữ liệu phần cứng trực tiếp: {nodeName || "Softty Server 1 (Master)"} • Chu kỳ lấy mẫu 10s
 					</p>
 				</div>
 
