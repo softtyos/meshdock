@@ -653,7 +653,9 @@ export const settingsRouter = createTRPCRouter({
 			const shouldUpdate = input?.force || data.updateAvailable;
 
 			if (shouldUpdate) {
-				let baseImage = process.env.DOKPLOY_IMAGE;
+				let baseImage = process.env.DOKPLOY_IMAGE
+					? process.env.DOKPLOY_IMAGE.split(":")[0]?.split("@")[0]
+					: null;
 				if (!baseImage) {
 					try {
 						const { stdout } = await execAsync(
