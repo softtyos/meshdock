@@ -105,8 +105,14 @@ export const HandleSSHKeys = ({ sshKeyId }: Props) => {
 			.mutateAsync(type)
 			.then(async (data) => {
 				toast.success("SSH Key Generated");
-				form.setValue("privateKey", data.privateKey);
-				form.setValue("publicKey", data.publicKey);
+				form.setValue("privateKey", data.privateKey, {
+					shouldValidate: true,
+					shouldDirty: true,
+				});
+				form.setValue("publicKey", data.publicKey, {
+					shouldValidate: true,
+					shouldDirty: true,
+				});
 			})
 			.catch(() => {
 				toast.error("Error generating the SSH Key");
@@ -243,7 +249,7 @@ export const HandleSSHKeys = ({ sshKeyId }: Props) => {
 									</div>
 									<FormControl>
 										<Textarea
-											placeholder={"-----BEGIN RSA PRIVATE KEY-----"}
+											placeholder={"Paste private key (starts with -----BEGIN ...) or click Generate above"}
 											rows={5}
 											{...field}
 										/>
@@ -261,7 +267,10 @@ export const HandleSSHKeys = ({ sshKeyId }: Props) => {
 										<FormLabel>Public Key</FormLabel>
 									</div>
 									<FormControl>
-										<Input placeholder={"ssh-rsa AAAAB3NzaC1yc2E"} {...field} />
+										<Input
+											placeholder={"Paste public key (starts with ssh-rsa or ssh-ed25519) or click Generate above"}
+											{...field}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>

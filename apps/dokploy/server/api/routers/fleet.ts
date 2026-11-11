@@ -11,6 +11,7 @@ import { server } from "@dokploy/server/db/schema";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { getLocalServerIp } from "@/server/wss/terminal";
 import { createTRPCRouter, protectedProcedure, withPermission } from "../trpc";
 
 export interface FleetNodeInfo {
@@ -62,6 +63,16 @@ export const fleetRouter = createTRPCRouter({
 		let isLocalSwarm = false;
 		let localClusterId = "standalone";
 		let localClusterName = "Standalone Pool";
+		let localIp = "127.0.0.1";
+
+		try {
+			const ipCandidate = await getLocalServerIp();
+			if (ipCandidate && !ipCandidate.includes("unable")) {
+				localIp = ipCandidate;
+			}
+		} catch {
+			// fallback
+		}
 
 		try {
 			localInfo = await Promise.race([
@@ -70,6 +81,10 @@ export const fleetRouter = createTRPCRouter({
 					setTimeout(() => reject(new Error("Local docker timeout")), 3000),
 				),
 			]);
+
+			if (localInfo?.Swarm?.NodeAddr) {
+				localIp = localInfo.Swarm.NodeAddr;
+			}
 
 			let swarmInspectData: any = null;
 			try {
@@ -83,7 +98,24 @@ export const fleetRouter = createTRPCRouter({
 				// Swarm not active
 			}
 
+			// Robust check: direct docker.listNodes() - if it succeeds, local host is 100% Swarm Manager
+			try {
+				const directNodes = (await Promise.race([
+					docker.listNodes(),
+					new Promise((_, reject) =>
+						setTimeout(() => reject(new Error("List nodes timeout")), 2500),
+					),
+				])) as any[];
+				if (Array.isArray(directNodes) && directNodes.length > 0) {
+					localSwarmNodes = directNodes;
+					isLocalSwarm = true;
+				}
+			} catch {
+				// Not a swarm manager or listNodes failed
+			}
+
 			const isSwarmActive =
+				isLocalSwarm ||
 				localInfo?.Swarm?.LocalNodeState === "active" ||
 				localInfo?.Swarm?.LocalNodeState === "locked" ||
 				!!swarmInspectData?.ID;
@@ -98,7 +130,7 @@ export const fleetRouter = createTRPCRouter({
 				localClusterId = cId;
 				localClusterName = `Swarm Cluster (${cId.slice(0, 8)})`;
 
-				if (localInfo?.Swarm?.ControlAvailable || !!swarmInspectData?.ID) {
+				if (localSwarmNodes.length === 0 && (localInfo?.Swarm?.ControlAvailable || !!swarmInspectData?.ID)) {
 					try {
 						localSwarmNodes = (await Promise.race([
 							docker.listNodes(),
@@ -112,13 +144,17 @@ export const fleetRouter = createTRPCRouter({
 				}
 			}
 
+			const isManager =
+				isLocalSwarm &&
+				(localInfo?.Swarm?.ControlAvailable ?? (localSwarmNodes.length > 0 || !!swarmInspectData?.ID));
+
 			nodes.push({
 				id: "local-host",
 				serverId: null,
-				name: localInfo.Name || "Meshdock Controller (Local)",
-				ip: "127.0.0.1",
+				name: localInfo.Name || "application.softty.net (Controller)",
+				ip: localIp,
 				role: isLocalSwarm
-					? (localInfo?.Swarm?.ControlAvailable ?? !!swarmInspectData?.ID)
+					? isManager
 						? "swarm-manager"
 						: "swarm-worker"
 					: "standalone",
@@ -128,7 +164,7 @@ export const fleetRouter = createTRPCRouter({
 				clusterId: localClusterId,
 				clusterName: localClusterName,
 				swarmNodeId: localInfo.Swarm?.NodeID,
-				isLeader: localInfo.Swarm?.ControlAvailable ?? !!swarmInspectData?.ID,
+				isLeader: isManager,
 				cpuCores: localInfo.NCPU || 2,
 				memoryBytes: localInfo.MemTotal || 4 * 1024 * 1024 * 1024,
 				containersRunning: localInfo.ContainersRunning || 0,
@@ -141,14 +177,14 @@ export const fleetRouter = createTRPCRouter({
 			nodes.push({
 				id: "local-host",
 				serverId: null,
-				name: "Meshdock Controller (Local)",
-				ip: "127.0.0.1",
-				role: "standalone",
+				name: "application.softty.net (Controller)",
+				ip: localIp,
+				role: isLocalSwarm ? "swarm-manager" : "standalone",
 				status: "degraded",
 				isLocal: true,
 				autoDiscovered: false,
-				clusterId: "standalone",
-				clusterName: "Standalone Pool",
+				clusterId: localClusterId,
+				clusterName: localClusterName,
 				cpuCores: 2,
 				memoryBytes: 4 * 1024 * 1024 * 1024,
 				containersRunning: 0,
