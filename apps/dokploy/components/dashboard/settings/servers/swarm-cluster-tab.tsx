@@ -1,3 +1,4 @@
+import { format, formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import {
 	AlertCircle,
@@ -147,12 +148,12 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 			<Card className="border-border/60 bg-gradient-to-r from-emerald-500/10 via-background to-blue-500/5">
 				<CardHeader className="pb-3">
 					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-						<div className="flex items-center gap-3">
-							<div className="size-10 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center border border-emerald-500/30">
+						<div className="flex items-start sm:items-center gap-3">
+							<div className="size-10 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center border border-emerald-500/30 shrink-0 mt-0.5 sm:mt-0">
 								<Zap className="size-5" />
 							</div>
 							<div>
-								<div className="flex items-center gap-2">
+								<div className="flex items-center gap-2 flex-wrap">
 									<CardTitle className="text-lg font-bold">
 										Meshdock Swarm Global Agent
 									</CardTitle>
@@ -167,13 +168,13 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 										{isGlobalMode ? "Auto-Agent (mode: global)" : "Chưa kích hoạt Global"}
 									</Badge>
 								</div>
-								<CardDescription className="text-xs sm:text-sm mt-0.5">
+								<CardDescription className="text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
 									Cơ chế tương tự Portainer Agent: Bất kỳ node nào tham gia Swarm sẽ tự động được cấp phát Agent mà không cần SSH thủ công.
 								</CardDescription>
 							</div>
 						</div>
 
-						<div className="flex items-center gap-2 w-full sm:w-auto">
+						<div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
 							<Button
 								size="sm"
 								variant={isGlobalMode ? "outline" : "default"}
@@ -195,30 +196,30 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 				</CardHeader>
 				<CardContent className="pt-0">
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-						<div className="p-2.5 rounded-lg border bg-background/50 flex items-center justify-between">
-							<span className="text-muted-foreground">Trạng thái Agent:</span>
+						<div className="p-3 rounded-xl border border-border/60 bg-background/60 flex items-center justify-between shadow-xs">
+							<span className="text-muted-foreground font-medium">Trạng thái Agent:</span>
 							<span className="font-semibold flex items-center gap-1.5">
 								{agentStatus?.isDeployed ? (
 									<>
 										<span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-										Đang chạy ({activeCount}/{totalCount} node)
+										<span className="text-emerald-600 dark:text-emerald-400">Đang chạy ({activeCount}/{totalCount} node)</span>
 									</>
 								) : (
 									<>
 										<span className="size-2 rounded-full bg-amber-500" />
-										Chưa khởi tạo
+										<span>Chưa khởi tạo</span>
 									</>
 								)}
 							</span>
 						</div>
-						<div className="p-2.5 rounded-lg border bg-background/50 flex items-center justify-between">
-							<span className="text-muted-foreground">Chế độ phân bổ:</span>
+						<div className="p-3 rounded-xl border border-border/60 bg-background/60 flex items-center justify-between shadow-xs">
+							<span className="text-muted-foreground font-medium">Chế độ phân bổ:</span>
 							<span className="font-semibold text-primary">
 								{isGlobalMode ? "Global (1 replica / node)" : "Replicated"}
 							</span>
 						</div>
-						<div className="p-2.5 rounded-lg border bg-background/50 flex items-center justify-between">
-							<span className="text-muted-foreground">Tổng số node Swarm:</span>
+						<div className="p-3 rounded-xl border border-border/60 bg-background/60 flex items-center justify-between shadow-xs">
+							<span className="text-muted-foreground font-medium">Tổng số node Swarm:</span>
 							<span className="font-semibold">{totalCount} node</span>
 						</div>
 					</div>
@@ -239,12 +240,13 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 							</CardDescription>
 						</div>
 						<Button
-							variant="ghost"
+							variant="outline"
 							size="sm"
-							className="text-xs text-muted-foreground"
+							className="text-xs h-8 gap-1.5"
 							onClick={() => setShowManagerJoin(!showManagerJoin)}
 						>
-							{showManagerJoin ? "Ẩn lệnh Manager Join" : "Hiện lệnh Manager Join (HA)"}
+							<ShieldCheck className="size-3.5 text-primary" />
+							<span>{showManagerJoin ? "Ẩn lệnh Manager Join" : "Hiện lệnh Manager Join (HA)"}</span>
 						</Button>
 					</div>
 				</CardHeader>
@@ -390,27 +392,29 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 											<TableRow key={node.ID} className="hover:bg-muted/30">
 												<TableCell className="font-mono text-xs">
 													<div className="flex items-center gap-2">
-														<span className="font-medium text-foreground">
+														<span className="font-semibold text-foreground">
 															{node.Description.Hostname}
 														</span>
 														{isLeader && (
 															<Badge
 																variant="default"
-																className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30"
+																className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 font-medium"
 															>
 																Leader
 															</Badge>
 														)}
 													</div>
-													<span className="text-[10px] text-muted-foreground">
-														{node.ID.substring(0, 12)}
-													</span>
+													<div className="mt-1 flex items-center gap-1.5">
+														<span className="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded border border-border/40">
+															ID: {node.ID.substring(0, 12)}
+														</span>
+													</div>
 												</TableCell>
 
 												<TableCell className="text-center">
 													<Badge
 														variant={isManager ? "default" : "secondary"}
-														className="text-xs"
+														className="text-xs capitalize font-medium"
 													>
 														{node.Spec.Role}
 													</Badge>
@@ -446,7 +450,7 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 
 												<TableCell className="text-left">
 													<div className="flex flex-col text-xs font-mono">
-														<div className="flex items-center gap-1.5 text-foreground">
+														<div className="flex items-center gap-1.5 text-foreground font-medium">
 															<Cpu className="size-3 text-muted-foreground" />
 															<span>{cpuCores > 0 ? `${cpuCores} vCPU` : "—"}</span>
 															<span className="text-muted-foreground">•</span>
@@ -454,21 +458,35 @@ export const SwarmClusterTab = ({ serverId }: Props) => {
 															<span>{Number(memoryGb) > 0 ? `${memoryGb} GB` : "—"}</span>
 														</div>
 														{node.Description?.Platform?.OS && (
-															<span className="text-[10px] text-muted-foreground">
+															<span className="text-[10px] text-muted-foreground mt-0.5">
 																{node.Description.Platform.OS}/{node.Description.Platform.Architecture}
 															</span>
 														)}
 													</div>
 												</TableCell>
 
-												<TableCell className="text-center text-xs text-muted-foreground font-mono">
-													{node.Description.Engine.EngineVersion}
+												<TableCell className="text-center">
+													<Badge variant="outline" className="font-mono text-[11px] font-normal">
+														v{node.Description.Engine.EngineVersion}
+													</Badge>
 												</TableCell>
 
-												<TableCell className="text-center text-xs text-muted-foreground">
-													<DateTooltip date={node.CreatedAt} className="text-xs">
-														{new Date(node.CreatedAt).toLocaleDateString()}
-													</DateTooltip>
+												<TableCell className="text-center">
+													<TooltipProvider delayDuration={0}>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<div className="flex flex-col items-center justify-center cursor-default">
+																	<span className="text-xs text-foreground font-mono">
+																		{new Date(node.CreatedAt).toLocaleDateString()}
+																	</span>
+																	<span className="text-[10px] text-muted-foreground">
+																		{formatDistanceToNow(new Date(node.CreatedAt), { addSuffix: true })}
+																	</span>
+																</div>
+															</TooltipTrigger>
+															<TooltipContent>{format(new Date(node.CreatedAt), "PPpp")}</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
 												</TableCell>
 
 												<TableCell className="text-right">

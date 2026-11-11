@@ -84,22 +84,22 @@ export const ShowServers = () => {
 
 			{/* Fleet Health & Resource Summary */}
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex items-center justify-between">
+				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex flex-row items-center justify-between">
 					<div className="space-y-1">
 						<span className="text-xs text-muted-foreground font-medium">Toàn bộ Máy chủ / Nodes</span>
 						<p className="text-2xl font-bold font-mono">
 							{fleetData?.kpis ? fleetData.kpis.totalNodes : (data?.length || 0) + 1}
 						</p>
 						<span className="text-[11px] text-muted-foreground">
-							{fleetData?.kpis?.swarmNodes || 1} Swarm • {fleetData?.kpis?.standaloneNodes || data?.length || 0} VPS
+							{fleetData?.kpis?.swarmNodes ?? 1} Swarm • {fleetData?.kpis?.standaloneNodes ?? data?.length ?? 0} VPS
 						</span>
 					</div>
-					<div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+					<div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
 						<ServerIcon className="size-5" />
 					</div>
 				</Card>
 
-				<Card className="p-4 border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between">
+				<Card className="p-4 border-emerald-500/20 bg-emerald-500/5 flex flex-row items-center justify-between">
 					<div className="space-y-1">
 						<span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
 							<span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -112,12 +112,12 @@ export const ShowServers = () => {
 							Sẵn sàng tiếp nhận & xử lý tác vụ
 						</span>
 					</div>
-					<div className="size-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+					<div className="size-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
 						<Activity className="size-5" />
 					</div>
 				</Card>
 
-				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex items-center justify-between">
+				<Card className="p-4 border-border/70 bg-card/60 backdrop-blur-xs flex flex-row items-center justify-between">
 					<div className="space-y-1">
 						<span className="text-xs text-muted-foreground font-medium">Cảnh báo / Quá tải</span>
 						<p className={`text-2xl font-bold font-mono ${(fleetData?.kpis?.offlineNodes || 0) > 0 ? "text-rose-500" : "text-foreground"}`}>
@@ -127,7 +127,7 @@ export const ShowServers = () => {
 							{(fleetData?.kpis?.offlineNodes || 0) > 0 ? "Cần kiểm tra ngay" : "Hạ tầng ổn định tuyệt đối"}
 						</span>
 					</div>
-					<div className="size-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+					<div className="size-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
 						<Zap className="size-5" />
 					</div>
 				</Card>
