@@ -55,7 +55,11 @@ export const getUpdateData = async (
 		const targetRepo = process.env.DOKPLOY_IMAGE ? process.env.DOKPLOY_IMAGE.split(":")[0] : "softtynet/meshdock";
 		let baseUrl = `https://hub.docker.com/v2/repositories/${targetRepo}/tags`;
 		let url: string | null = `${baseUrl}?page_size=100`;
-		let allResults: { digest: string; name: string }[] = [];
+		let allResults: {
+			digest: string;
+			name: string;
+			images?: { architecture: string; digest: string }[];
+		}[] = [];
 
 		// Fetch all tags from Docker Hub (fallback to softtynet/dokploy if meshdock repo is new)
 		try {
@@ -75,7 +79,11 @@ export const getUpdateData = async (
 
 			const data = (await response.json()) as {
 				next: string | null;
-				results: { digest: string; name: string }[];
+				results: {
+					digest: string;
+					name: string;
+					images?: { architecture: string; digest: string }[];
+				}[];
 			};
 
 			allResults = allResults.concat(data.results);
@@ -89,22 +97,18 @@ export const getUpdateData = async (
 		// These are unstable versions that change frequently, and users on these
 		// branches are expected to manually manage updates
 		if (currentImageTag === "canary" || currentImageTag === "feature") {
-			const currentDigest = await getServiceImageDigest();
-			const latestDigest = allResults.find(
-				(t) => t.name === currentImageTag,
-			)?.digest;
-			if (!latestDigest) {
+			const currentDigest = await getServiceImageDigest().catch(() => null);
+			const targetTag = allResults.find((t) => t.name === currentImageTag);
+			if (!targetTag || !currentDigest) {
 				return DEFAULT_UPDATE_DATA;
 			}
-			if (currentDigest !== latestDigest) {
-				return {
-					latestVersion: currentImageTag,
-					updateAvailable: true,
-				};
-			}
+			const isMatchingDigest =
+				currentDigest === targetTag.digest ||
+				targetTag.images?.some((img) => img.digest === currentDigest);
+
 			return {
 				latestVersion: currentImageTag,
-				updateAvailable: false,
+				updateAvailable: !isMatchingDigest,
 			};
 		}
 
@@ -116,7 +120,7 @@ export const getUpdateData = async (
 			return DEFAULT_UPDATE_DATA;
 		}
 
-		// Find the versioned tag (v0.x.x) that has the same digest as "latest"
+		// Find the versioned tag (v0.x.x or v1.x.x) that has the same digest as "latest"
 		const latestVersionTag = allResults.find(
 			(t) => t.digest === latestTag.digest && t.name.startsWith("v"),
 		);
@@ -128,21 +132,36 @@ export const getUpdateData = async (
 			const cleanedCurrent = semver.clean(currentVersion);
 			const cleanedLatest = semver.clean(latestVersion);
 
-			if (cleanedCurrent && cleanedLatest && semver.gt(cleanedLatest, cleanedCurrent)) {
-				updateAvailable = true;
+			if (cleanedCurrent && cleanedLatest) {
+				if (semver.gt(cleanedLatest, cleanedCurrent)) {
+					updateAvailable = true;
+				} else if (semver.gte(cleanedCurrent, cleanedLatest)) {
+					// Running current or newer version -> definitely no update needed
+					return {
+						latestVersion,
+						updateAvailable: false,
+					};
+				}
 			}
 		}
 
-		// Also check digest comparison against running container if on latest
+		// Digest comparison fallback (e.g. for untagged rebuilds of latest)
+		// Check both multi-arch manifest list digest and architecture-specific child manifests
 		if (!updateAvailable && latestTag) {
 			try {
 				const currentDigest = await getServiceImageDigest();
-				if (currentDigest && latestTag.digest && currentDigest !== latestTag.digest) {
-					updateAvailable = true;
-					latestVersion = latestVersionTag?.name || "latest";
+				if (currentDigest) {
+					const isMatchingDigest =
+						currentDigest === latestTag.digest ||
+						latestTag.images?.some((img) => img.digest === currentDigest);
+
+					if (!isMatchingDigest) {
+						updateAvailable = true;
+						latestVersion = latestVersionTag?.name || "latest";
+					}
 				}
 			} catch {
-				// Fallback if digest check fails
+				// Digest check failed, fallback to semver
 			}
 		}
 
