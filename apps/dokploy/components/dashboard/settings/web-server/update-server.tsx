@@ -10,7 +10,7 @@ import {
 	X,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,7 @@ export const UpdateServer = ({
 	const [isUpdateAvailable, setIsUpdateAvailable] = useState(
 		!!updateData?.updateAvailable,
 	);
+	const utils = api.useUtils();
 	const { mutateAsync: getUpdateData, isPending } =
 		api.settings.getUpdateData.useMutation();
 	const { data: dokployVersion } = api.settings.getDokployVersion.useQuery();
@@ -56,15 +57,24 @@ export const UpdateServer = ({
 	);
 	const [isOpenInternal, setIsOpenInternal] = useState(false);
 
+	useEffect(() => {
+		if (updateData) {
+			setHasCheckedUpdate(true);
+			setIsUpdateAvailable(!!updateData.updateAvailable);
+			setLatestVersion(updateData.latestVersion ?? "");
+		}
+	}, [updateData]);
+
 	const handleCheckUpdates = async () => {
 		try {
-			const updateData = await getUpdateData();
-			const versionToUpdate = updateData.latestVersion || "";
+			await utils.settings.getDokployVersion.invalidate();
+			const fetchedData = await getUpdateData();
+			const versionToUpdate = fetchedData.latestVersion || "";
 			setHasCheckedUpdate(true);
-			setIsUpdateAvailable(updateData.updateAvailable);
+			setIsUpdateAvailable(fetchedData.updateAvailable);
 			setLatestVersion(versionToUpdate);
 
-			if (updateData.updateAvailable) {
+			if (fetchedData.updateAvailable) {
 				toast.success(versionToUpdate, {
 					description: "New version available!",
 				});

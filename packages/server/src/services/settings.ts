@@ -120,9 +120,16 @@ export const getUpdateData = async (
 			return DEFAULT_UPDATE_DATA;
 		}
 
-		// Find the versioned tag (v0.x.x or v1.x.x) that has the same digest as "latest"
+		// Find the versioned tag (v0.x.x or 1.x.x) that corresponds to "latest"
 		const latestVersionTag = allResults.find(
-			(t) => t.digest === latestTag.digest && t.name.startsWith("v"),
+			(t) =>
+				(t.name.startsWith("v") || Boolean(semver.valid(t.name))) &&
+				(t.digest === latestTag.digest ||
+					(latestTag.images &&
+						t.images &&
+						t.images.some((ti) =>
+							latestTag.images?.some((li) => li.digest === ti.digest),
+						))),
 		);
 
 		let updateAvailable = false;

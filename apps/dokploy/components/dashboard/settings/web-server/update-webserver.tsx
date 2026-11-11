@@ -64,6 +64,7 @@ export const UpdateWebServer = ({
 	const [open, setOpen] = useState(false);
 	const [healthResult, setHealthResult] = useState<HealthResult | null>(null);
 
+	const utils = api.useUtils();
 	const { mutateAsync: updateServer } = api.settings.updateServer.useMutation();
 	const { refetch: checkHealth } =
 		api.settings.checkInfrastructureHealth.useQuery(undefined, {
@@ -90,8 +91,11 @@ export const UpdateWebServer = ({
 		healthResult.postgres.status === "healthy" &&
 		healthResult.traefik.status === "healthy";
 
-	const checkIsUpdateFinished = async (attempts = 0) => {
-		if (attempts > 35) {
+	const checkIsUpdateFinished = async (
+		targetVersion?: string,
+		attempts = 0,
+	) => {
+		if (attempts > 50) {
 			toast.error(
 				"Thời gian chờ cập nhật quá lâu. Vui lòng kiểm tra lại dịch vụ hoặc tải lại trang.",
 			);
@@ -100,28 +104,50 @@ export const UpdateWebServer = ({
 		}
 
 		try {
-			const response = await fetch("/api/health", { cache: "no-store" });
+			const response = await fetch(`/api/health?t=${Date.now()}`, {
+				cache: "no-store",
+			});
 			if (!response.ok) {
 				throw new Error("Health check failed");
 			}
 
+			const data = (await response.json().catch(() => ({}))) as {
+				ok?: boolean;
+				version?: string;
+			};
+
+			// If targetVersion is known, wait until the running container reports the new version
+			if (targetVersion && data?.version) {
+				const cleanTarget = targetVersion.replace(/^v/, "").trim();
+				const cleanCurrent = data.version.replace(/^v/, "").trim();
+				if (cleanCurrent !== cleanTarget) {
+					// Previous container still serving, wait for swarm rolling replacement
+					await new Promise((resolve) => setTimeout(resolve, 3000));
+					return checkIsUpdateFinished(targetVersion, attempts + 1);
+				}
+			}
+
+			await utils.settings.getDokployVersion.invalidate();
+
 			toast.success(
-				"Hệ thống đã nâng cấp thành công lên phiên bản mới! Đang tải lại trang...",
+				`Hệ thống đã nâng cấp thành công lên phiên bản ${data?.version || targetVersion || "mới"}! Đang tải lại trang...`,
 			);
 
 			setTimeout(() => {
 				window.location.reload();
-			}, 2000);
+			}, 1500);
 		} catch {
 			await new Promise((resolve) => setTimeout(resolve, 3000));
-			void checkIsUpdateFinished(attempts + 1);
+			void checkIsUpdateFinished(targetVersion, attempts + 1);
 		}
 	};
 
 	const handleConfirm = async () => {
 		setModalState("updating");
+		let targetTag: string | undefined;
 		try {
-			await updateServer();
+			const res = await updateServer();
+			targetTag = res?.version;
 		} catch (error) {
 			console.log(
 				"Server update dispatched (connection drop during restart is normal):",
@@ -129,9 +155,9 @@ export const UpdateWebServer = ({
 			);
 		}
 
-		// Wait 6 seconds for Swarm to stop the old task and start the new container
-		await new Promise((resolve) => setTimeout(resolve, 6000));
-		await checkIsUpdateFinished();
+		// Initial wait before polling to allow docker pull / service update to initialize
+		await new Promise((resolve) => setTimeout(resolve, 5000));
+		await checkIsUpdateFinished(targetTag);
 	};
 
 	const handleClose = () => {
