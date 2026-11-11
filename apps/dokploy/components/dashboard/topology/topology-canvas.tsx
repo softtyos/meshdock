@@ -19,6 +19,7 @@ import {
 	Search,
 	Server,
 	Shield,
+	Sparkles,
 	Terminal,
 	Workflow,
 	X,
@@ -53,6 +54,11 @@ export interface TopologyNode {
 		| "volume"
 		| string;
 	status: "healthy" | "warning" | "offline";
+	targetAppId?: string;
+	targetAppName?: string;
+	targetServerId?: string;
+	serverId?: string;
+	domains?: string[];
 	stats?: {
 		cpu?: number;
 		memory?: string;
@@ -72,14 +78,31 @@ export interface TopologyEdge {
 const TrafficPulseConnector = ({
 	pulseColor = "#06b6d4",
 	enabled = true,
+	label,
 }: {
 	fromColor?: string;
 	toColor?: string;
 	pulseColor?: string;
 	enabled?: boolean;
+	label?: string;
 }) => {
 	return (
-		<div className="flex flex-col items-center py-1 relative">
+		<div className="flex flex-col items-center py-2 relative my-1">
+			{label && (
+				<div className="mb-2 px-3 py-1 rounded-full bg-background/90 border border-border/70 shadow-xs text-[11px] font-sans font-medium text-muted-foreground flex items-center gap-2 backdrop-blur-xs">
+					<span className="relative flex h-2 w-2">
+						<span
+							className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+							style={{ backgroundColor: pulseColor }}
+						/>
+						<span
+							className="relative inline-flex rounded-full h-2 w-2"
+							style={{ backgroundColor: pulseColor }}
+						/>
+					</span>
+					<span>{label}</span>
+				</div>
+			)}
 			<svg className="w-6 h-10 overflow-visible" viewBox="0 0 24 40">
 				<line
 					x1="12"
@@ -215,8 +238,167 @@ export const TopologyCanvas = ({
 	const [searchQuery, setSearchQuery] = useState<string>("");
 	const [activeTier, setActiveTier] = useState<string>("all");
 	const [trafficPulseEnabled, setTrafficPulseEnabled] = useState<boolean>(true);
+	const [activeTraceId, setActiveTraceId] = useState<string | null>(null);
 
-	// Group nodes by tier for pipeline view
+	// 5 Sequential Architecture Stages (Computed dynamically from nodes)
+	const stage1Domains = useMemo(() => {
+		const q = searchQuery.toLowerCase().trim();
+		return nodes.filter(
+			(n) =>
+				n.type === "domain" &&
+				(!q ||
+					n.label.toLowerCase().includes(q) ||
+					(n.sublabel && n.sublabel.toLowerCase().includes(q)) ||
+					(n.targetAppName && n.targetAppName.toLowerCase().includes(q))),
+		);
+	}, [nodes, searchQuery]);
+
+	const stage2Gateways = useMemo(() => {
+		const q = searchQuery.toLowerCase().trim();
+		const list = nodes.filter(
+			(n) =>
+				(n.type === "traefik" || n.type === "gateway" || n.id === "traefik-ingress") &&
+				(!q || n.label.toLowerCase().includes(q) || (n.sublabel && n.sublabel.toLowerCase().includes(q))),
+		);
+		if (list.length === 0) {
+			return [
+				{
+					id: "traefik-ingress",
+					label: "Traefik Ingress Gateway",
+					sublabel: "TLS / Reverse Proxy (:80, :443)",
+					tier: "ingress" as const,
+					type: "traefik",
+					status: "healthy" as const,
+				},
+			];
+		}
+		return list;
+	}, [nodes, searchQuery]);
+
+	const stage3Hosts = useMemo(() => {
+		const q = searchQuery.toLowerCase().trim();
+		return nodes.filter(
+			(n) =>
+				(n.type === "swarm-cluster" || n.type === "host" || n.type === "standalone" || n.tier === "cluster") &&
+				(!q || n.label.toLowerCase().includes(q) || (n.sublabel && n.sublabel.toLowerCase().includes(q))),
+		);
+	}, [nodes, searchQuery]);
+
+	const stage4Workloads = useMemo(() => {
+		const q = searchQuery.toLowerCase().trim();
+		return nodes.filter(
+			(n) =>
+				(n.type === "application" || n.type === "compose" || n.tier === "service") &&
+				(!q ||
+					n.label.toLowerCase().includes(q) ||
+					(n.sublabel && n.sublabel.toLowerCase().includes(q)) ||
+					(n.domains && n.domains.some((d) => d.toLowerCase().includes(q)))),
+		);
+	}, [nodes, searchQuery]);
+
+	const stage5Storage = useMemo(() => {
+		const q = searchQuery.toLowerCase().trim();
+		return nodes.filter(
+			(n) =>
+				(n.type === "database" || n.type === "volume" || n.tier === "data") &&
+				(!q || n.label.toLowerCase().includes(q) || (n.sublabel && n.sublabel.toLowerCase().includes(q))),
+		);
+	}, [nodes, searchQuery]);
+
+	// Active Trace Path Computation
+	const activeTrace = useMemo(() => {
+		if (!activeTraceId) return null;
+		const clicked = nodes.find((n) => n.id === activeTraceId);
+		if (!clicked) return null;
+
+		const highlightedIds = new Set<string>();
+		highlightedIds.add(clicked.id);
+
+		let domainNode: TopologyNode | undefined;
+		let gatewayNode: TopologyNode | undefined = nodes.find(
+			(n) => n.type === "traefik" || n.type === "gateway" || n.id === "traefik-ingress",
+		);
+		let serverNode: TopologyNode | undefined;
+		let appNode: TopologyNode | undefined;
+		let dbNode: TopologyNode | undefined;
+
+		if (gatewayNode) highlightedIds.add(gatewayNode.id);
+
+		if (clicked.type === "domain") {
+			domainNode = clicked;
+			if (clicked.targetAppId) {
+				appNode = nodes.find((n) => n.id === clicked.targetAppId);
+			}
+			if (clicked.targetServerId) {
+				serverNode = nodes.find((n) => n.id === clicked.targetServerId);
+			}
+		} else if (clicked.type === "application" || clicked.type === "compose") {
+			appNode = clicked;
+			domainNode = nodes.find(
+				(n) =>
+					n.type === "domain" &&
+					(n.targetAppId === clicked.id || (clicked.domains && clicked.domains.includes(n.label))),
+			);
+			if (clicked.serverId) {
+				serverNode = nodes.find((n) => n.id === clicked.serverId);
+			}
+		} else if (
+			clicked.type === "swarm-cluster" ||
+			clicked.type === "host" ||
+			clicked.type === "standalone"
+		) {
+			serverNode = clicked;
+			nodes
+				.filter((n) => n.serverId === clicked.id)
+				.forEach((a) => {
+					highlightedIds.add(a.id);
+					const d = nodes.find((dom) => dom.targetAppId === a.id);
+					if (d) highlightedIds.add(d.id);
+				});
+		} else if (clicked.type === "database") {
+			dbNode = clicked;
+			if (clicked.serverId) {
+				serverNode = nodes.find((n) => n.id === clicked.serverId);
+			}
+		}
+
+		if (domainNode) highlightedIds.add(domainNode.id);
+		if (appNode) {
+			highlightedIds.add(appNode.id);
+			if (!serverNode && appNode.serverId) {
+				serverNode = nodes.find((n) => n.id === appNode.serverId);
+			}
+		}
+		if (!serverNode) {
+			serverNode = nodes.find((n) => n.id === "cluster-primary");
+		}
+		if (serverNode) highlightedIds.add(serverNode.id);
+
+		// Find databases and storage
+		const storageNode = nodes.find((n) => n.id === "storage-volumes");
+		if (storageNode) highlightedIds.add(storageNode.id);
+
+		if (!dbNode && serverNode) {
+			const relatedDb = nodes.find((n) => n.type === "database" && n.serverId === serverNode?.id);
+			if (relatedDb) {
+				dbNode = relatedDb;
+				highlightedIds.add(relatedDb.id);
+			}
+		}
+
+		return {
+			highlightedIds,
+			domain: domainNode?.label || (clicked.type === "domain" ? clicked.label : null),
+			gateway: gatewayNode?.label || "Traefik Ingress Gateway (:443)",
+			server: serverNode?.label || "Softty Server 1 (Master)",
+			app:
+				appNode?.label ||
+				(clicked.type === "application" || clicked.type === "compose" ? clicked.label : null),
+			db: dbNode?.label || "Mesh Persistent Volumes",
+		};
+	}, [activeTraceId, nodes]);
+
+	// Group nodes by tier for pipeline view fallback
 	const tiers = useMemo(() => {
 		const q = searchQuery.toLowerCase().trim();
 		const filterFn = (n: TopologyNode) => {
@@ -333,7 +515,7 @@ export const TopologyCanvas = ({
 							onClick={() => setViewMode("infrastructure")}
 						>
 							<Server className="h-3.5 w-3.5" />
-							<span>Phân Bổ Theo Máy Chủ (Host Centric)</span>
+							<span>Phân Bổ Theo Máy Chủ (Host Infrastructure)</span>
 						</Button>
 						<Button
 							variant={viewMode === "pipeline" ? "default" : "ghost"}
@@ -342,7 +524,7 @@ export const TopologyCanvas = ({
 							onClick={() => setViewMode("pipeline")}
 						>
 							<Workflow className="h-3.5 w-3.5" />
-							<span>Luồng Điều Hướng Tên Miền (Routing Flow)</span>
+							<span>Sơ Đồ Hệ Thống (End-to-End Pipeline)</span>
 						</Button>
 					</div>
 
@@ -733,197 +915,381 @@ export const TopologyCanvas = ({
 				</div>
 			) : (
 				/* ========================================================
-				    VIEW 2: MULTI-TIER ROUTING PIPELINE FLOW
+				    VIEW 2: END-TO-END SYSTEM ARCHITECTURE PIPELINE
 				======================================================== */
 				<div
-					className="min-h-[680px] p-6 pt-16 transition-transform duration-150 origin-top flex flex-col items-center justify-start space-y-12 select-none overflow-x-auto relative z-10"
+					className="min-h-[680px] p-6 pt-10 transition-transform duration-150 origin-top flex flex-col items-center justify-start space-y-10 select-none overflow-x-auto relative z-10"
 					style={{ transform: `scale(${zoom})` }}
 				>
-					{/* LAYER 1: Edge & Ingress */}
-					{(activeTier === "all" || activeTier === "ingress") && (
-						<div className="w-full flex flex-col items-center space-y-3">
-							<div className="flex items-center gap-2">
-								<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
-									<Shield className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-400" />
-									Tier 1: Ingress Domains & Gateway ({tiers.ingress.length})
+					{/* Active Trace Path Indicator Banner */}
+					{activeTrace && (
+						<div className="w-full max-w-5xl mx-auto p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 shadow-lg shadow-emerald-500/10 animate-in fade-in slide-in-from-top-2">
+							<div className="flex items-center gap-2 flex-wrap text-xs">
+								<span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500 text-white font-bold text-[11px] uppercase tracking-wide">
+									<Sparkles className="size-3.5" />
+									Đang Soi Luồng Thực Tế
 								</span>
+								{activeTrace.domain && (
+									<>
+										<span className="font-mono font-bold text-foreground bg-background/90 px-2.5 py-1 rounded-lg border border-border/70 shadow-2xs">
+											{activeTrace.domain}
+										</span>
+										<ArrowRight className="h-3.5 w-3.5 text-emerald-500" />
+									</>
+								)}
+								<span className="font-mono font-medium text-cyan-600 dark:text-cyan-400 bg-background/90 px-2.5 py-1 rounded-lg border border-border/70 shadow-2xs">
+									{activeTrace.gateway}
+								</span>
+								<ArrowRight className="h-3.5 w-3.5 text-cyan-500" />
+								<span className="font-mono font-medium text-blue-600 dark:text-blue-400 bg-background/90 px-2.5 py-1 rounded-lg border border-border/70 shadow-2xs">
+									{activeTrace.server}
+								</span>
+								{activeTrace.app && (
+									<>
+										<ArrowRight className="h-3.5 w-3.5 text-purple-500" />
+										<span className="font-mono font-bold text-purple-600 dark:text-purple-400 bg-background/90 px-2.5 py-1 rounded-lg border border-border/70 shadow-2xs">
+											{activeTrace.app}
+										</span>
+									</>
+								)}
+								{activeTrace.db && (
+									<>
+										<ArrowRight className="h-3.5 w-3.5 text-amber-500" />
+										<span className="font-mono font-medium text-emerald-600 dark:text-emerald-400 bg-background/90 px-2.5 py-1 rounded-lg border border-border/70 shadow-2xs">
+											{activeTrace.db}
+										</span>
+									</>
+								)}
 							</div>
-							<div className="flex flex-wrap items-center justify-center gap-3.5 max-w-5xl">
-								{tiers.ingress.map((node) => (
-									<div
-										key={node.id}
-										onClick={() => setSelectedNode(node)}
-										className={`px-3.5 py-2 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-xs flex items-center gap-2.5 ${
-											selectedNode?.id === node.id
-												? "border-emerald-500 ring-2 ring-emerald-500/20"
-												: "border-border/70 hover:border-cyan-500/50"
-										}`}
-									>
-										<div className="size-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-											{getNodeIcon(node.type)}
-										</div>
-										<div className="min-w-0">
-											<div className="flex items-center gap-1.5">
-												<span
-													className={`h-1.5 w-1.5 rounded-full shrink-0 ${getStatusDot(node.status)}`}
-												/>
-												<h5 className="text-xs font-bold text-foreground font-mono truncate max-w-[180px]">
-													{node.label}
-												</h5>
-											</div>
-											<p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-												{node.sublabel}
-											</p>
-										</div>
-									</div>
-								))}
-							</div>
-
-							{/* Animated Traffic Pulse Connector Down */}
-							<TrafficPulseConnector
-								pulseColor="#06b6d4"
-								enabled={trafficPulseEnabled}
-							/>
+							<Button
+								size="sm"
+								variant="ghost"
+								className="h-7 text-xs px-2.5 hover:bg-emerald-500/20 text-muted-foreground hover:text-foreground"
+								onClick={() => setActiveTraceId(null)}
+							>
+								<X className="h-3.5 w-3.5 mr-1" />
+								Xem toàn bộ luồng
+							</Button>
 						</div>
 					)}
 
-					{/* LAYER 2: Compute Infrastructure */}
-					{(activeTier === "all" || activeTier === "cluster") && (
-						<div className="w-full flex flex-col items-center space-y-3">
-							<div className="flex items-center gap-2">
-								<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
-									<Layers className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
-									Tier 2: Compute Hosts & Swarm Clusters ({tiers.cluster.length})
-								</span>
+					{/* CHẶNG 1: BÊN NGOÀI MẠNG INTERNET (Tên Miền Công Khai) */}
+					<div className="w-full flex flex-col items-center space-y-3">
+						<div className="flex flex-col items-center text-center gap-1">
+							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 text-xs font-bold uppercase tracking-wider shadow-xs backdrop-blur-xs">
+								<Globe className="h-3.5 w-3.5" />
+								<span>Chặng 1: Bên Ngoài Mạng Internet (Tên Miền Đăng Ký - {stage1Domains.length})</span>
 							</div>
-							<div className="flex flex-wrap items-center justify-center gap-5 max-w-5xl">
-								{tiers.cluster.map((node) => (
+							<p className="text-[11px] text-muted-foreground">
+								Khách hàng & thiết bị truy cập qua DNS công khai • Click vào bất kỳ tên miền nào để soi luồng đi từ ngoài vào trong
+							</p>
+						</div>
+
+						<div className="flex flex-wrap items-center justify-center gap-2.5 max-w-5xl">
+							{stage1Domains.map((node) => {
+								const isHighlighted = activeTrace ? activeTrace.highlightedIds.has(node.id) : false;
+								const isDimmed = activeTrace ? !isHighlighted : false;
+								return (
 									<div
 										key={node.id}
-										onClick={() => setSelectedNode(node)}
-										className={`px-5 py-3 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md flex items-center gap-3.5 ${
-											selectedNode?.id === node.id
-												? "border-blue-500 ring-2 ring-blue-500/20"
-												: "border-border/70 hover:border-blue-500/50"
+										onClick={() => {
+											if (activeTraceId === node.id) {
+												setActiveTraceId(null);
+											} else {
+												setActiveTraceId(node.id);
+											}
+											setSelectedNode(node);
+										}}
+										className={`group px-3 py-2 rounded-xl border bg-card cursor-pointer transition-all duration-200 shadow-xs flex items-center gap-2.5 ${
+											isHighlighted
+												? "border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/10 scale-105 shadow-md shadow-emerald-500/20"
+												: isDimmed
+													? "opacity-25 grayscale-[60%] scale-95"
+													: "border-border/70 hover:border-cyan-500/60 hover:scale-102"
 										}`}
 									>
-										<div className="size-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+										<div className="size-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 text-cyan-500">
+											<Globe className="h-3.5 w-3.5" />
+										</div>
+										<div className="min-w-0">
+											<div className="flex items-center gap-1.5">
+												<span className={`h-1.5 w-1.5 rounded-full shrink-0 ${getStatusDot(node.status)}`} />
+												<h5 className="text-xs font-bold text-foreground font-mono truncate max-w-[170px]">
+													{node.label}
+												</h5>
+											</div>
+											<div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+												<span className="font-semibold text-emerald-600 dark:text-emerald-400">
+													{node.sublabel?.includes("HTTPS") ? "HTTPS (:443)" : "HTTP (:80)"}
+												</span>
+												{node.targetAppName && (
+													<span className="text-muted-foreground truncate max-w-[110px]">
+														➔ {node.targetAppName}
+													</span>
+												)}
+											</div>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+
+						<TrafficPulseConnector
+							pulseColor="#06b6d4"
+							enabled={trafficPulseEnabled}
+							label="Lưu lượng Internet ➔ Cổng tiếp nhận công khai :80 / :443"
+						/>
+					</div>
+
+					{/* CHẶNG 2: CỬA NGÕ PROXY GIAO TIẾP (Traefik Ingress Gateway) */}
+					<div className="w-full flex flex-col items-center space-y-3">
+						<div className="flex flex-col items-center text-center gap-1">
+							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider shadow-xs backdrop-blur-xs">
+								<Shield className="h-3.5 w-3.5" />
+								<span>Chặng 2: Cửa Ngõ Proxy Giao Tiếp (Traefik Ingress Gateway)</span>
+							</div>
+							<p className="text-[11px] text-muted-foreground">
+								Cổng giao tiếp duy nhất mở ra Internet • Bóc tách mã hoá SSL/TLS & Đọc Host Header tên miền để điều hướng
+							</p>
+						</div>
+
+						<div className="flex flex-wrap items-center justify-center gap-4 max-w-2xl">
+							{stage2Gateways.map((node) => {
+								const isHighlighted = activeTrace ? activeTrace.highlightedIds.has(node.id) : false;
+								const isDimmed = activeTrace ? !isHighlighted : false;
+								return (
+									<div
+										key={node.id}
+										onClick={() => {
+											setSelectedNode(node);
+											setActiveTraceId(node.id);
+										}}
+										className={`px-6 py-4 rounded-2xl border bg-card cursor-pointer transition-all duration-200 shadow-md flex items-center gap-4 ${
+											isHighlighted
+												? "border-cyan-500 ring-2 ring-cyan-500/30 bg-cyan-500/10 scale-105 shadow-cyan-500/20"
+												: isDimmed
+													? "opacity-25 grayscale-[60%] scale-95"
+													: "border-border/80 hover:border-cyan-500/60 hover:scale-102"
+										}`}
+									>
+										<div className="size-11 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0 text-cyan-500">
+											<Shield className="h-6 w-6" />
+										</div>
+										<div>
+											<div className="flex items-center gap-2">
+												<span className={`h-2 w-2 rounded-full ${getStatusDot(node.status)}`} />
+												<h4 className="text-sm font-bold text-foreground">
+													{node.label}
+												</h4>
+												<span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-500/20">
+													Let&apos;s Encrypt Auto-SSL
+												</span>
+											</div>
+											<p className="text-xs text-muted-foreground mt-1">
+												{node.sublabel || "TLS / Reverse Proxy (:80, :443)"} • Mạng nội bộ: <span className="font-mono text-cyan-600 dark:text-cyan-400">dokploy-network</span>
+											</p>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+
+						<TrafficPulseConnector
+							pulseColor="#3b82f6"
+							enabled={trafficPulseEnabled}
+							label="Chuyển tiếp gói tin qua mạng ảo nội bộ dokploy-network vào Máy Chủ đích"
+						/>
+					</div>
+
+					{/* CHẶNG 3: HẠ TẦNG MÁY CHỦ & MẠNG NỘI BỘ (Compute Hosts) */}
+					<div className="w-full flex flex-col items-center space-y-3">
+						<div className="flex flex-col items-center text-center gap-1">
+							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider shadow-xs backdrop-blur-xs">
+								<Server className="h-3.5 w-3.5" />
+								<span>Chặng 3: Phân Phối Máy Chủ & Mạng Cụm (Compute Hosts - {stage3Hosts.length})</span>
+							</div>
+							<p className="text-[11px] text-muted-foreground">
+								Hạ tầng máy chủ vật lý chứa các container ứng dụng đang chạy
+							</p>
+						</div>
+
+						<div className="flex flex-wrap items-center justify-center gap-5 max-w-4xl">
+							{stage3Hosts.map((node) => {
+								const isHighlighted = activeTrace ? activeTrace.highlightedIds.has(node.id) : false;
+								const isDimmed = activeTrace ? !isHighlighted : false;
+								const isPrimary = node.id === "cluster-primary" || node.type === "swarm-cluster";
+								return (
+									<div
+										key={node.id}
+										onClick={() => {
+											setSelectedNode(node);
+											setActiveTraceId(node.id);
+										}}
+										className={`px-5 py-3.5 rounded-2xl border bg-card cursor-pointer transition-all duration-200 shadow-sm flex items-center gap-3.5 ${
+											isHighlighted
+												? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/10 scale-105 shadow-blue-500/20"
+												: isDimmed
+													? "opacity-25 grayscale-[60%] scale-95"
+													: "border-border/80 hover:border-blue-500/60 hover:scale-102"
+										}`}
+									>
+										<div className={`size-10 rounded-xl flex items-center justify-center shrink-0 border ${
+											isPrimary
+												? "bg-blue-500/10 border-blue-500/30 text-blue-500"
+												: "bg-amber-500/10 border-amber-500/30 text-amber-500"
+										}`}>
 											{getNodeIcon(node.type)}
 										</div>
 										<div>
-											<div className="flex items-center gap-1.5">
-												<span
-													className={`h-2 w-2 rounded-full ${getStatusDot(node.status)}`}
-												/>
+											<div className="flex items-center gap-2">
+												<span className={`h-2 w-2 rounded-full ${getStatusDot(node.status)}`} />
 												<h5 className="text-xs font-bold text-foreground">
 													{node.label}
 												</h5>
+												<span className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium border ${
+													isPrimary
+														? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30"
+														: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+												}`}>
+													{isPrimary ? "Swarm Leader (Chính)" : "Node Mở Rộng / Sẵn Sàng"}
+												</span>
 											</div>
-											<p className="text-[10px] text-muted-foreground mt-0.5">
-												{node.sublabel}
+											<p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+												{node.sublabel} {isPrimary ? `• ${stage4Workloads.length} Workloads` : "• 0 Workload (Rảnh)"}
 											</p>
 										</div>
 									</div>
-								))}
-							</div>
-
-							{/* Animated Traffic Pulse Connector Down */}
-							<TrafficPulseConnector
-								pulseColor="#a855f7"
-								enabled={trafficPulseEnabled}
-							/>
+								);
+							})}
 						</div>
-					)}
 
-					{/* LAYER 3: Workload Applications & Stacks */}
-					{(activeTier === "all" || activeTier === "service") && (
-						<div className="w-full flex flex-col items-center space-y-3">
-							<div className="flex items-center gap-2">
-								<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
-									<Zap className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
-									Tier 3: Workload Services & Stacks ({tiers.service.length})
-								</span>
+						<TrafficPulseConnector
+							pulseColor="#a855f7"
+							enabled={trafficPulseEnabled}
+							label="Phân phối trực tiếp vào Container ứng dụng thực thi"
+						/>
+					</div>
+
+					{/* CHẶNG 4: THÀNH PHẦN ỨNG DỤNG ĐÍCH (Target Workload Services) */}
+					<div className="w-full flex flex-col items-center space-y-3">
+						<div className="flex flex-col items-center text-center gap-1">
+							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider shadow-xs backdrop-blur-xs">
+								<Zap className="h-3.5 w-3.5" />
+								<span>Chặng 4: Thành Phần Ứng Dụng Đích (Workload Containers - {stage4Workloads.length})</span>
 							</div>
-							<div className="flex flex-wrap items-center justify-center gap-3 max-w-5xl">
-								{tiers.service.map((node) => (
+							<p className="text-[11px] text-muted-foreground">
+								Container xử lý logic nghiệp vụ • Click vào ứng dụng để soi ngược lại tên miền và database liên kết
+							</p>
+						</div>
+
+						<div className="flex flex-wrap items-center justify-center gap-3 max-w-5xl">
+							{stage4Workloads.map((node) => {
+								const isHighlighted = activeTrace ? activeTrace.highlightedIds.has(node.id) : false;
+								const isDimmed = activeTrace ? !isHighlighted : false;
+								return (
 									<div
 										key={node.id}
-										onClick={() => setSelectedNode(node)}
-										className={`px-3.5 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-xs flex items-center gap-2.5 ${
-											selectedNode?.id === node.id
-												? "border-purple-500 ring-2 ring-purple-500/20"
-												: "border-border/70 hover:border-purple-500/50"
+										onClick={() => {
+											if (activeTraceId === node.id) {
+												setActiveTraceId(null);
+											} else {
+												setActiveTraceId(node.id);
+											}
+											setSelectedNode(node);
+										}}
+										className={`px-3.5 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 shadow-xs flex items-center gap-2.5 ${
+											isHighlighted
+												? "border-purple-500 ring-2 ring-purple-500/30 bg-purple-500/10 scale-105 shadow-md shadow-purple-500/20"
+												: isDimmed
+													? "opacity-25 grayscale-[60%] scale-95"
+													: "border-border/70 hover:border-purple-500/50 hover:scale-102"
 										}`}
 									>
-										<div className="size-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+										<div className="size-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 text-purple-500">
 											{getNodeIcon(node.type)}
 										</div>
 										<div className="min-w-0">
 											<div className="flex items-center gap-1.5">
-												<span
-													className={`h-1.5 w-1.5 rounded-full ${getStatusDot(node.status)}`}
-												/>
-												<h5 className="text-xs font-bold text-foreground truncate max-w-[150px]">
+												<span className={`h-1.5 w-1.5 rounded-full ${getStatusDot(node.status)}`} />
+												<h5 className="text-xs font-bold text-foreground truncate max-w-[160px]">
 													{node.label}
 												</h5>
 											</div>
-											<p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-												{node.sublabel}
-											</p>
+											<div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5 truncate">
+												<span className="font-mono">{node.sublabel || node.type}</span>
+												{node.domains && node.domains.length > 0 && (
+													<span className="text-cyan-600 dark:text-cyan-400 font-mono">
+														({node.domains[0]})
+													</span>
+												)}
+											</div>
 										</div>
 									</div>
-								))}
-							</div>
-
-							{/* Animated Traffic Pulse Connector Down */}
-							<TrafficPulseConnector
-								pulseColor="#10b981"
-								enabled={trafficPulseEnabled}
-							/>
+								);
+							})}
 						</div>
-					)}
 
-					{/* LAYER 4: Databases & Storage Volumes */}
-					{(activeTier === "all" || activeTier === "data") && (
-						<div className="w-full flex flex-col items-center space-y-3">
-							<div className="flex items-center gap-2">
-								<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 bg-background/80 dark:bg-muted/30 px-3 py-1 rounded-full border border-border/60 shadow-xs backdrop-blur-xs">
-									<Database className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-									Tier 4: Databases & Storage ({tiers.data.length})
-								</span>
+						<TrafficPulseConnector
+							pulseColor="#10b981"
+							enabled={trafficPulseEnabled}
+							label="Truy xuất Database nội bộ & Ghi dữ liệu ổ đĩa bền vững (SSD/VPC)"
+						/>
+					</div>
+
+					{/* CHẶNG 5: HẬU ĐÀI DỮ LIỆU & LƯU TRỮ BỀN VỮNG (Internal Databases & Storage) */}
+					<div className="w-full flex flex-col items-center space-y-3">
+						<div className="flex flex-col items-center text-center gap-1">
+							<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider shadow-xs backdrop-blur-xs">
+								<Database className="h-3.5 w-3.5" />
+								<span>Chặng 5: Hậu Đài Dữ Liệu & Lưu Trữ (Databases & Storage - {stage5Storage.length})</span>
 							</div>
-							<div className="flex flex-wrap items-center justify-center gap-3.5 max-w-5xl">
-								{tiers.data.map((node) => (
+							<p className="text-[11px] text-muted-foreground">
+								Hạ tầng dữ liệu nội bộ • Đóng hoàn toàn với Internet bên ngoài, chỉ giao tiếp nội bộ qua mạng ảo
+							</p>
+						</div>
+
+						<div className="flex flex-wrap items-center justify-center gap-3.5 max-w-4xl">
+							{stage5Storage.map((node) => {
+								const isHighlighted = activeTrace ? activeTrace.highlightedIds.has(node.id) : false;
+								const isDimmed = activeTrace ? !isHighlighted : false;
+								return (
 									<div
 										key={node.id}
-										onClick={() => setSelectedNode(node)}
-										className={`px-3.5 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:scale-105 shadow-xs flex items-center gap-2.5 ${
-											selectedNode?.id === node.id
-												? "border-emerald-500 ring-2 ring-emerald-500/20"
-												: "border-border/70 hover:border-emerald-500/50"
+										onClick={() => {
+											if (activeTraceId === node.id) {
+												setActiveTraceId(null);
+											} else {
+												setActiveTraceId(node.id);
+											}
+											setSelectedNode(node);
+										}}
+										className={`px-3.5 py-2.5 rounded-xl border bg-card cursor-pointer transition-all duration-200 shadow-xs flex items-center gap-2.5 ${
+											isHighlighted
+												? "border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/10 scale-105 shadow-md shadow-emerald-500/20"
+												: isDimmed
+													? "opacity-25 grayscale-[60%] scale-95"
+													: "border-border/70 hover:border-emerald-500/50 hover:scale-102"
 										}`}
 									>
-										<div className="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+										<div className="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-500">
 											{getNodeIcon(node.type)}
 										</div>
 										<div className="min-w-0">
 											<div className="flex items-center gap-1.5">
-												<span
-													className={`h-1.5 w-1.5 rounded-full ${getStatusDot(node.status)}`}
-												/>
+												<span className={`h-1.5 w-1.5 rounded-full ${getStatusDot(node.status)}`} />
 												<h5 className="text-xs font-bold text-foreground">
 													{node.label}
 												</h5>
 											</div>
-											<p className="text-[10px] text-muted-foreground mt-0.5">
-												{node.sublabel}
+											<p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+												{node.sublabel} • <span className="text-emerald-600 dark:text-emerald-400">VPC Internal Only</span>
 											</p>
 										</div>
 									</div>
-								))}
-							</div>
+								);
+							})}
 						</div>
-					)}
+					</div>
 				</div>
 			)}
 
