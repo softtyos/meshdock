@@ -1,10 +1,11 @@
 import {
-	Activity,
 	AlertTriangle,
 	CheckCircle2,
+	HardDrive,
 	Layers,
 	Loader2,
 	RefreshCw,
+	ShieldCheck,
 	Sparkles,
 	Trash2,
 	Zap,
@@ -26,6 +27,7 @@ import { api } from "@/utils/api";
 export const FleetBulkActions = () => {
 	const utils = api.useUtils();
 	const [isOpen, setIsOpen] = useState(false);
+	const [cleanMode, setCleanMode] = useState<"all" | "buildCache">("all");
 	const [activeAction, setActiveAction] = useState<"none" | "clean" | "restart">("none");
 	const [cleanSummary, setCleanSummary] = useState<any>(null);
 	const [restartSummary, setRestartSummary] = useState<any>(null);
@@ -34,9 +36,10 @@ export const FleetBulkActions = () => {
 		onSuccess: (data) => {
 			setCleanSummary(data);
 			toast.success(
-				`Đã dọn dẹp Docker cache thành công trên ${data.successCount}/${data.totalNodes} máy chủ!`,
+				`Đã dọn dẹp tài nguyên Docker thành công trên ${data.successCount}/${data.totalNodes} máy chủ!`,
 			);
-			utils.fleet.getFleetOverview.invalidate();
+			void utils.fleet.getFleetOverview.invalidate();
+			void utils.vitals.getHostVitals.invalidate();
 		},
 		onError: (err) => {
 			toast.error(`Thao tác thất bại: ${err.message}`);
@@ -55,8 +58,8 @@ export const FleetBulkActions = () => {
 					"Toàn bộ dịch vụ trong cụm đều đang hoạt động ổn định (không có dịch vụ nào quá tải hay lỗi).",
 				);
 			}
-			utils.fleet.getFleetOverview.invalidate();
-			utils.fleet.getFleetContainers.invalidate();
+			void utils.fleet.getFleetOverview.invalidate();
+			void utils.fleet.getFleetContainers.invalidate();
 		},
 		onError: (err) => {
 			toast.error(`Thao tác thất bại: ${err.message}`);
@@ -67,7 +70,7 @@ export const FleetBulkActions = () => {
 		setActiveAction("clean");
 		setCleanSummary(null);
 		try {
-			await cleanMutation.mutateAsync();
+			await cleanMutation.mutateAsync({ mode: cleanMode });
 		} finally {
 			setActiveAction("none");
 		}
@@ -114,7 +117,7 @@ export const FleetBulkActions = () => {
 				</DialogHeader>
 
 				<div className="space-y-4 py-3">
-					{/* Action 1: Bulk Clean Docker Cache */}
+					{/* Action 1: Bulk Clean Docker Resources */}
 					<div className="p-4 rounded-xl border border-border/70 bg-card/60 space-y-3">
 						<div className="flex items-start justify-between gap-3">
 							<div className="flex items-center gap-2.5">
@@ -123,10 +126,10 @@ export const FleetBulkActions = () => {
 								</div>
 								<div>
 									<h4 className="text-sm font-semibold text-foreground">
-										Dọn dẹp Docker Build Cache Toàn Cụm
+										Dọn Dẹp Dung Lượng Docker Toàn Cụm
 									</h4>
 									<p className="text-xs text-muted-foreground mt-0.5">
-										Giải phóng dung lượng ổ cứng bằng cách xóa sạch cache build thừa, dangling layers trên tất cả các node máy chủ.
+										Thu hồi hàng chục GB dung lượng ổ cứng từ Unused Images, Build Cache và Containers rác trên toàn bộ node.
 									</p>
 								</div>
 							</div>
@@ -152,6 +155,62 @@ export const FleetBulkActions = () => {
 							</Button>
 						</div>
 
+						{/* Clean Mode Selector */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+							<button
+								type="button"
+								disabled={isBusy}
+								onClick={() => setCleanMode("all")}
+								className={`text-left p-2.5 rounded-lg border transition-all ${
+									cleanMode === "all"
+										? "border-emerald-500/50 bg-emerald-500/10"
+										: "border-border/50 bg-background/40 hover:bg-muted/40"
+								}`}
+							>
+								<div className="flex items-center justify-between gap-1">
+									<span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+										<HardDrive className="size-3.5 text-emerald-500" />
+										Toàn diện An toàn
+									</span>
+									<Badge
+										variant="outline"
+										className="text-[9px] px-1.5 py-0 h-4 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+									>
+										Khuyên dùng
+									</Badge>
+								</div>
+								<p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+									Xóa Unused Images + Build Cache + Stopped Containers.
+								</p>
+							</button>
+
+							<button
+								type="button"
+								disabled={isBusy}
+								onClick={() => setCleanMode("buildCache")}
+								className={`text-left p-2.5 rounded-lg border transition-all ${
+									cleanMode === "buildCache"
+										? "border-cyan-500/50 bg-cyan-500/10"
+										: "border-border/50 bg-background/40 hover:bg-muted/40"
+								}`}
+							>
+								<div className="flex items-center justify-between gap-1">
+									<span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+										<Layers className="size-3.5 text-cyan-500" />
+										Chỉ Build Cache
+									</span>
+								</div>
+								<p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+									Chỉ xóa bộ nhớ đệm Docker Builder, giữ lại toàn bộ image cũ.
+								</p>
+							</button>
+						</div>
+
+						<div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+							<ShieldCheck className="size-3.5 shrink-0" />
+							<span>Cam kết an toàn: Bảo toàn 100% Docker Volumes và các container đang chạy.</span>
+						</div>
+
 						{/* Clean Results Display */}
 						{cleanSummary && (
 							<div className="mt-3 pt-3 border-t border-border/40 space-y-2">
@@ -164,23 +223,33 @@ export const FleetBulkActions = () => {
 										Thành công {cleanSummary.successCount}/{cleanSummary.totalNodes} node
 									</Badge>
 								</div>
-								<div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+								<div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
 									{cleanSummary.results.map((r: any, idx: number) => (
 										<div
 											key={idx}
-											className="flex items-center justify-between p-2 rounded-lg bg-background/60 border border-border/40 text-[11px]"
+											className="flex flex-col gap-1 p-2 rounded-lg bg-background/60 border border-border/40 text-[11px]"
 										>
-											<div className="flex items-center gap-1.5 truncate mr-2">
-												{r.success ? (
-													<CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-												) : (
-													<AlertTriangle className="size-3.5 text-rose-500 shrink-0" />
+											<div className="flex items-center justify-between gap-2">
+												<div className="flex items-center gap-1.5 truncate">
+													{r.success ? (
+														<CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+													) : (
+														<AlertTriangle className="size-3.5 text-rose-500 shrink-0" />
+													)}
+													<span className="font-medium text-foreground truncate">
+														{r.name}
+													</span>
+												</div>
+												{r.reclaimedText && (
+													<Badge
+														variant="outline"
+														className="text-[10px] font-mono shrink-0 border-cyan-500/30 text-cyan-600 dark:text-cyan-400"
+													>
+														~{r.reclaimedText}
+													</Badge>
 												)}
-												<span className="font-medium text-foreground truncate">
-													{r.name}
-												</span>
 											</div>
-											<span className="text-muted-foreground truncate shrink-0">
+											<span className="text-muted-foreground pl-5 leading-snug">
 												{r.message}
 											</span>
 										</div>

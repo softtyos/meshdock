@@ -67,7 +67,7 @@ const FleetPage = () => {
 						</h1>
 					</div>
 					<p className="text-xs sm:text-sm text-muted-foreground mt-1">
-						Centralized management for multi-cluster Docker Swarms & standalone VPS fleets.
+						Quản trị tập trung đa cụm Docker Swarm & hệ thống máy chủ VPS độc lập theo thời gian thực.
 					</p>
 				</div>
 
@@ -93,7 +93,7 @@ const FleetPage = () => {
 								isRefetching ? "animate-spin" : ""
 							}`}
 						/>
-						<span className="hidden sm:inline">Refresh</span>
+						<span className="hidden sm:inline">Làm mới</span>
 					</Button>
 				</div>
 			</div>
@@ -102,7 +102,7 @@ const FleetPage = () => {
 			<FleetKpis kpis={fleetData?.kpis} isLoading={isLoading} />
 
 			{/* View Toggle Tabs */}
-			<div className="flex items-center justify-between pt-2 border-t">
+			<div className="flex items-center justify-between pt-2 border-t border-border/60">
 				<Tabs
 					value={viewMode}
 					onValueChange={(val: any) => setViewMode(val)}
@@ -110,10 +110,10 @@ const FleetPage = () => {
 				>
 					<TabsList className="bg-muted/40 p-1">
 						<TabsTrigger value="matrix" className="text-xs gap-1.5">
-							<LayoutGrid className="h-3.5 w-3.5" /> Fleet Matrix
+							<LayoutGrid className="h-3.5 w-3.5" /> Ma trận Cụm (Matrix)
 						</TabsTrigger>
 						<TabsTrigger value="telemetry" className="text-xs gap-1.5">
-							<Activity className="h-3.5 w-3.5 text-emerald-400" /> Live Telemetry
+							<Activity className="h-3.5 w-3.5 text-emerald-400" /> Giám sát Thời gian thực (Telemetry)
 						</TabsTrigger>
 					</TabsList>
 				</Tabs>
@@ -123,7 +123,7 @@ const FleetPage = () => {
 			{isLoading ? (
 				<div className="flex flex-col items-center justify-center min-h-[300px] gap-2 text-muted-foreground">
 					<Loader2 className="h-6 w-6 animate-spin text-emerald-400" />
-					<span className="text-sm">Connecting to fleet daemons & swarm nodes...</span>
+					<span className="text-sm">Đang đồng bộ trạng thái cụm Docker Swarm & VPS...</span>
 				</div>
 			) : viewMode === "matrix" ? (
 				<FleetMatrix
