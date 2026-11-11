@@ -3,17 +3,54 @@ import {
 	docker,
 	findServerById,
 	getAllContainerStats,
+	getHostVitals,
 	getRemoteDocker,
+	getWebServerSettings,
 	IS_CLOUD,
 	optimizeHostResources,
 } from "@dokploy/server";
 import { db } from "@dokploy/server/db";
-import { server } from "@dokploy/server/db/schema";
-import { TRPCError } from "@trpc/server";
+import { projects, server } from "@dokploy/server/db/schema";
+import {
+	execAsync,
+	execAsyncRemote,
+} from "@dokploy/server/utils/process/execAsync";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { audit } from "@/server/api/utils/audit";
 import { getLocalServerIp } from "@/server/wss/terminal";
-import { createTRPCRouter, protectedProcedure, withPermission } from "../trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	protectedProcedure,
+	withPermission,
+} from "../trpc";
+
+const safeContainerIdSchema = z
+	.string()
+	.min(1, "Container ID không được để trống")
+	.max(128, "Container ID quá dài")
+	.regex(/^[a-zA-Z0-9_.-]+$/, "Container ID chứa ký tự không hợp lệ");
+
+export interface TelemetryDataPoint {
+	timestamp: string;
+	cpu: number;
+	memUsedGB: number;
+	memTotalGB: number;
+	memPerc: number;
+	netInKB: number;
+	netOutKB: number;
+	diskIoMB: number;
+}
+
+interface NodeTelemetryBuffer {
+	points: TelemetryDataPoint[];
+	lastRxBytes: number;
+	lastTxBytes: number;
+	lastSampleMs: number;
+}
+
+const telemetryRingBuffer = new Map<string, NodeTelemetryBuffer>();
 
 export interface FleetNodeInfo {
 	id: string;
@@ -454,9 +491,7 @@ export const fleetRouter = createTRPCRouter({
 		)
 		.query(async ({ input, ctx }) => {
 			const safeInput = input || { serverId: null };
-			if (safeInput.serverId) {
-				await assertServerAccess(ctx.session, safeInput.serverId);
-			}
+			await assertServerAccess(ctx.session, safeInput.serverId ?? null);
 
 			const stats = await getAllContainerStats(safeInput.serverId ?? undefined);
 
@@ -475,59 +510,243 @@ export const fleetRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Telemetry generator for Grafana-style time-series charts
+	 * Real-time & Historical Fleet Telemetry (sourced from meshdock-agent / dokploy-monitoring
+	 * with live /proc & HostVitals ring-buffer fallback — 100% real hardware telemetry)
 	 */
 	getFleetTelemetry: withPermission("monitoring", "read")
 		.input(
 			z
 				.object({
 					nodeId: z.string().optional(),
-					points: z.number().default(20),
+					points: z.number().min(5).max(100).default(25),
 				})
 				.optional()
-				.default({ points: 20 }),
+				.default({ points: 25 }),
 		)
-		.query(async ({ input }) => {
-			const safeInput = input || { points: 20 };
-			// Generate realistic time-series points based on current system state
-			let baseCpu = 12.5;
-			let baseMemGB = 3.8;
-			const totalMemGB = 8.0;
-			const pointsCount = Math.max(10, Math.min(safeInput.points, 60));
+		.query(async ({ input, ctx }) => {
+			const safeInput = input || { points: 25 };
+			const pointsCount = Math.max(5, Math.min(safeInput.points, 60));
+			const isRemote =
+				!!safeInput.nodeId && safeInput.nodeId !== "local-host";
+			const targetServerId = isRemote ? safeInput.nodeId! : null;
 
+			await assertServerAccess(ctx.session, targetServerId);
+
+			// 1. Primary Source: Query historical SQLite metrics from dokploy-monitoring (meshdock-agent)
 			try {
-				const info = await docker.info();
-				baseCpu = Math.min(85, Math.max(5, (info.ContainersRunning || 1) * 4.2));
+				let metricsUrl = "";
+				let metricsToken = "metrics";
+
+				if (!isRemote) {
+					const webSettings = await getWebServerSettings().catch(() => null);
+					const port = webSettings?.metricsConfig?.server?.port || 4500;
+					metricsToken = webSettings?.metricsConfig?.server?.token || "metrics";
+					const host =
+						process.env.NODE_ENV === "production"
+							? "dokploy-monitoring"
+							: "localhost";
+					metricsUrl = `http://${host}:${port}/metrics?limit=${pointsCount + 1}`;
+				} else if (targetServerId) {
+					const remoteSrv = await findServerById(targetServerId).catch(
+						() => null,
+					);
+					const port = remoteSrv?.metricsConfig?.server?.port || 4500;
+					const token = remoteSrv?.metricsConfig?.server?.token;
+					if (remoteSrv?.ipAddress && token) {
+						metricsToken = token;
+						metricsUrl = `http://${remoteSrv.ipAddress}:${port}/metrics?limit=${pointsCount + 1}`;
+					}
+				}
+
+				if (metricsUrl) {
+					const resp = await fetch(metricsUrl, {
+						headers: { Authorization: `Bearer ${metricsToken}` },
+						signal: AbortSignal.timeout(2500),
+					});
+
+					if (resp.ok) {
+						const rawMetrics = (await resp.json()) as Array<{
+							cpu: string;
+							memUsed: string;
+							memUsedGB: string;
+							memTotal: string;
+							diskUsed: string;
+							totalDisk: string;
+							networkIn: string;
+							networkOut: string;
+							timestamp: string;
+						}>;
+
+						if (Array.isArray(rawMetrics) && rawMetrics.length > 0) {
+							const startIdx =
+								rawMetrics.length > pointsCount
+									? rawMetrics.length - pointsCount
+									: 0;
+							const realSeries: TelemetryDataPoint[] = [];
+
+							for (let i = startIdx; i < rawMetrics.length; i++) {
+								const curr = rawMetrics[i]!;
+								const prev = i > 0 ? rawMetrics[i - 1] : null;
+
+								const cpu =
+									Math.round(
+										Math.max(0, Math.min(100, Number.parseFloat(curr.cpu) || 0)) *
+											10,
+									) / 10;
+								const memTotalGB =
+									Math.round(
+										Math.max(0.5, Number.parseFloat(curr.memTotal) || 1) * 100,
+									) / 100;
+								const memUsedGB =
+									Math.round(
+										Math.max(0, Number.parseFloat(curr.memUsedGB) || 0) * 100,
+									) / 100;
+								const memPerc = Math.min(
+									100,
+									Math.max(
+										0,
+										Math.round(
+											Number.parseFloat(curr.memUsed) ||
+												(memUsedGB / memTotalGB) * 100,
+										),
+									),
+								);
+
+								// Calculate real bandwidth rate (KB/s) from consecutive cumulative MB counters
+								let netInKB = 0;
+								let netOutKB = 0;
+								if (prev) {
+									const currMs = new Date(curr.timestamp).getTime();
+									const prevMs = new Date(prev.timestamp).getTime();
+									const dtSec = Math.max(1, (currMs - prevMs) / 1000);
+									const dInMB = Math.max(
+										0,
+										(Number.parseFloat(curr.networkIn) || 0) -
+											(Number.parseFloat(prev.networkIn) || 0),
+									);
+									const dOutMB = Math.max(
+										0,
+										(Number.parseFloat(curr.networkOut) || 0) -
+											(Number.parseFloat(prev.networkOut) || 0),
+									);
+									netInKB = Math.round(((dInMB * 1024) / dtSec) * 10) / 10;
+									netOutKB = Math.round(((dOutMB * 1024) / dtSec) * 10) / 10;
+								}
+
+								const diskUsedPct = Number.parseFloat(curr.diskUsed) || 0;
+								const totalDiskGB = Number.parseFloat(curr.totalDisk) || 0;
+								const diskUsedGB =
+									Math.round(((diskUsedPct * totalDiskGB) / 100) * 10) / 10;
+
+								const tsDate = new Date(curr.timestamp);
+								const formattedTs = Number.isNaN(tsDate.getTime())
+									? curr.timestamp
+									: tsDate.toLocaleTimeString("vi-VN", {
+											hour12: false,
+											hour: "2-digit",
+											minute: "2-digit",
+											second: "2-digit",
+									  });
+
+								realSeries.push({
+									timestamp: formattedTs,
+									cpu,
+									memUsedGB,
+									memTotalGB,
+									memPerc,
+									netInKB,
+									netOutKB,
+									diskIoMB: diskUsedGB,
+								});
+							}
+
+							return realSeries;
+						}
+					}
+				}
 			} catch {
-				// Fallback
+				// Fall through to live host vitals + /proc/net/dev ring buffer
 			}
 
-			const now = Date.now();
-			const intervalMs = 15000; // 15 seconds per point
-			const data = [];
-
-			for (let i = pointsCount - 1; i >= 0; i--) {
-				const time = new Date(now - i * intervalMs);
-				const jitter = (Math.sin(i * 0.7) * 4) + (Math.random() * 3 - 1.5);
-				const cpu = Math.max(2, Math.min(100, Math.round((baseCpu + jitter) * 10) / 10));
-				const mem = Math.max(1, Math.min(totalMemGB, Math.round((baseMemGB + (jitter * 0.1)) * 100) / 100));
-				const netIn = Math.max(10, Math.round((340 + jitter * 40) * 10) / 10);
-				const netOut = Math.max(5, Math.round((180 + jitter * 25) * 10) / 10);
-				const diskIo = Math.max(1, Math.round((12 + jitter * 3) * 10) / 10);
-
-				data.push({
-					timestamp: time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-					cpu,
-					memUsedGB: mem,
-					memTotalGB: totalMemGB,
-					memPerc: Math.round((mem / totalMemGB) * 100),
-					netInKB: netIn,
-					netOutKB: netOut,
-					diskIoMB: diskIo,
-				});
+			// 2. Fallback Real Source: Sample live HostVitals + /proc/net/dev counters into ring buffer
+			const bufferKey = targetServerId || "local-host";
+			let entry = telemetryRingBuffer.get(bufferKey);
+			if (!entry) {
+				entry = {
+					points: [],
+					lastRxBytes: 0,
+					lastTxBytes: 0,
+					lastSampleMs: 0,
+				};
+				telemetryRingBuffer.set(bufferKey, entry);
 			}
 
-			return data;
+			const nowMs = Date.now();
+			// Avoid hammering SSH if sampled < 4 seconds ago
+			if (nowMs - entry.lastSampleMs >= 4000 || entry.points.length === 0) {
+				try {
+					const vitals = await getHostVitals(targetServerId);
+					const netCmd =
+						"awk 'NR>2 && $1 !~ /^lo:/ {rx+=$2; tx+=$10} END {print rx+0, tx+0}' /proc/net/dev 2>/dev/null";
+					const netRes = targetServerId
+						? await execAsyncRemote(targetServerId, netCmd).catch(() => ({
+								stdout: "0 0",
+						  }))
+						: await execAsync(netCmd).catch(() => ({ stdout: "0 0" }));
+
+					const [rxStr, txStr] = netRes.stdout.trim().split(/\s+/);
+					const rxBytes = Number.parseFloat(rxStr || "0") || 0;
+					const txBytes = Number.parseFloat(txStr || "0") || 0;
+
+					let netInKB = 0;
+					let netOutKB = 0;
+					if (entry.lastSampleMs > 0 && rxBytes >= entry.lastRxBytes) {
+						const dtSec = Math.max(1, (nowMs - entry.lastSampleMs) / 1000);
+						netInKB =
+							Math.round(((rxBytes - entry.lastRxBytes) / 1024 / dtSec) * 10) /
+							10;
+						netOutKB =
+							Math.round(
+								(Math.max(0, txBytes - entry.lastTxBytes) / 1024 / dtSec) * 10,
+							) / 10;
+					}
+
+					entry.lastRxBytes = rxBytes;
+					entry.lastTxBytes = txBytes;
+					entry.lastSampleMs = nowMs;
+
+					const memTotalGB =
+						Math.round((vitals.memory.totalBytes / 1024 ** 3) * 100) / 100 || 1;
+					const memUsedGB =
+						Math.round((vitals.memory.usedBytes / 1024 ** 3) * 100) / 100;
+					const diskUsedGB =
+						Math.round((vitals.disk.usedBytes / 1024 ** 3) * 10) / 10;
+
+					entry.points.push({
+						timestamp: new Date(nowMs).toLocaleTimeString("vi-VN", {
+							hour12: false,
+							hour: "2-digit",
+							minute: "2-digit",
+							second: "2-digit",
+						}),
+						cpu: vitals.cpu.loadPercent,
+						memUsedGB,
+						memTotalGB,
+						memPerc: vitals.memory.usedPercent,
+						netInKB,
+						netOutKB,
+						diskIoMB: diskUsedGB,
+					});
+
+					if (entry.points.length > 60) {
+						entry.points.splice(0, entry.points.length - 60);
+					}
+				} catch {
+					// Return existing buffer points if node is temporarily unreachable
+				}
+			}
+
+			return entry.points.slice(-pointsCount);
 		}),
 
 	/**
@@ -581,15 +800,13 @@ networks:
 	setNodeAvailability: withPermission("server", "terminal")
 		.input(
 			z.object({
-				nodeId: z.string(),
+				nodeId: safeContainerIdSchema,
 				availability: z.enum(["active", "pause", "drain"]),
 				serverId: z.string().optional().nullable(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const targetDocker = await getRemoteDocker(input.serverId ?? undefined);
 			const node = targetDocker.getNode(input.nodeId);
 			const nodeInfo = await node.inspect();
@@ -600,69 +817,101 @@ networks:
 					Availability: input.availability,
 				},
 			});
+			await audit(ctx, {
+				action: "update",
+				resourceType: "server",
+				resourceId: input.nodeId,
+				resourceName: `swarm-node-${input.availability}`,
+			});
 			return { ok: true };
 		}),
 
 	/**
 	 * Restart a container across the fleet
 	 */
-	restartContainer: withPermission("docker", "read")
+	restartContainer: withPermission("service", "create")
 		.input(
 			z.object({
-				containerId: z.string(),
+				containerId: safeContainerIdSchema,
 				serverId: z.string().optional().nullable(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const targetDocker = await getRemoteDocker(input.serverId ?? undefined);
 			const container = targetDocker.getContainer(input.containerId);
 			await container.restart();
+			await audit(ctx, {
+				action: "update",
+				resourceType: "docker",
+				resourceId: input.containerId,
+				resourceName: "fleet-restart-container",
+			});
 			return { ok: true };
 		}),
 
 	/**
-	 * Bulk 1-Click: Prune Docker build cache across all online nodes in the fleet simultaneously
+	 * Bulk 1-Click: Prune Docker unused images + build cache + stopped containers (preserving Volumes)
+	 * or Build Cache only across all online nodes in the fleet simultaneously (Owner / Admin only)
 	 */
-	bulkCleanDockerCache: withPermission("docker", "read")
-		.mutation(async ({ ctx }) => {
+	bulkCleanDockerCache: adminProcedure
+		.input(
+			z
+				.object({
+					mode: z.enum(["all", "buildCache"]).default("all"),
+				})
+				.optional()
+				.default({ mode: "all" }),
+		)
+		.mutation(async ({ input, ctx }) => {
+			const cleanMode = input?.mode || "all";
 			const orgId = ctx.session.activeOrganizationId;
-			const remoteServers = await db.query.server.findMany({
-				where: eq(server.organizationId, orgId),
-			}).catch(() => []);
+			const remoteServers = await db.query.server
+				.findMany({
+					where: eq(server.organizationId, orgId),
+				})
+				.catch(() => []);
 
-			const results: { name: string; serverId: string | null; success: boolean; message: string }[] = [];
+			const results: {
+				name: string;
+				serverId: string | null;
+				success: boolean;
+				message: string;
+				reclaimedText?: string;
+			}[] = [];
 
-			// 1. Clean local node
-			try {
-				const localRes = await optimizeHostResources(null, "buildCache");
-				results.push({
-					name: "Local Controller (application.softty.net)",
-					serverId: null,
-					success: localRes.success,
-					message: localRes.message,
-				});
-			} catch (err: any) {
-				results.push({
-					name: "Local Controller (application.softty.net)",
-					serverId: null,
-					success: false,
-					message: err?.message || "Lỗi khi dọn dẹp node cục bộ",
-				});
+			// 1. Clean local node (when self-hosted)
+			if (!IS_CLOUD) {
+				try {
+					const localRes = await optimizeHostResources(null, cleanMode);
+					results.push({
+						name: "Local Controller (application.softty.net)",
+						serverId: null,
+						success: localRes.success,
+						message: localRes.message,
+						reclaimedText: localRes.reclaimedText,
+					});
+				} catch (err: any) {
+					results.push({
+						name: "Local Controller (application.softty.net)",
+						serverId: null,
+						success: false,
+						message: err?.message || "Lỗi khi dọn dẹp node cục bộ",
+					});
+				}
 			}
 
 			// 2. Clean all remote nodes concurrently
 			await Promise.allSettled(
 				remoteServers.map(async (srv) => {
 					try {
-						const res = await optimizeHostResources(srv.serverId, "buildCache");
+						const res = await optimizeHostResources(srv.serverId, cleanMode);
 						results.push({
 							name: srv.name,
 							serverId: srv.serverId,
 							success: res.success,
 							message: res.message,
+							reclaimedText: res.reclaimedText,
 						});
 					} catch (err: any) {
 						results.push({
@@ -675,9 +924,16 @@ networks:
 				}),
 			);
 
+			await audit(ctx, {
+				action: "delete",
+				resourceType: "docker",
+				resourceName: `fleet-bulk-clean-${cleanMode}`,
+			});
+
 			const successCount = results.filter((r) => r.success).length;
 			return {
 				success: successCount > 0,
+				mode: cleanMode,
 				totalNodes: results.length,
 				successCount,
 				results,
@@ -685,55 +941,64 @@ networks:
 		}),
 
 	/**
-	 * Bulk 1-Click: Identify and restart degraded, unhealthy, or overloaded services across the entire fleet
+	 * Bulk 1-Click: Identify and restart degraded, unhealthy, or overloaded services across the entire fleet (Owner / Admin only)
 	 */
-	bulkRestartOverloadedServices: withPermission("docker", "read")
+	bulkRestartOverloadedServices: adminProcedure
 		.mutation(async ({ ctx }) => {
 			const orgId = ctx.session.activeOrganizationId;
-			const remoteServers = await db.query.server.findMany({
-				where: eq(server.organizationId, orgId),
-			}).catch(() => []);
+			const remoteServers = await db.query.server
+				.findMany({
+					where: eq(server.organizationId, orgId),
+				})
+				.catch(() => []);
 
-			const restarted: { name: string; containerId: string; serverName: string; reason: string }[] = [];
+			const restarted: {
+				name: string;
+				containerId: string;
+				serverName: string;
+				reason: string;
+			}[] = [];
 
-			// 1. Inspect local containers
-			try {
-				const localStats = await getAllContainerStats(undefined);
-				for (const c of localStats) {
-					const isInfra =
-						c.name?.includes("dokploy-postgres") ||
-						c.name?.includes("traefik") ||
-						c.name?.includes("dokploy");
-					if (isInfra) continue;
+			// 1. Inspect local containers (when self-hosted)
+			if (!IS_CLOUD) {
+				try {
+					const localStats = await getAllContainerStats(undefined);
+					for (const c of localStats) {
+						const isInfra =
+							c.name?.includes("dokploy-postgres") ||
+							c.name?.includes("traefik") ||
+							c.name?.includes("dokploy");
+						if (isInfra) continue;
 
-					const cpuVal = parseFloat(c.CPUPerc?.replace("%", "") || "0");
-					const isHighCpu = cpuVal > 85;
-					const isUnhealthy =
-						c.state === "restarting" ||
-						c.state === "dead" ||
-						c.health === "unhealthy";
+						const cpuVal = parseFloat(c.CPUPerc?.replace("%", "") || "0");
+						const isHighCpu = cpuVal > 85;
+						const isUnhealthy =
+							c.state === "restarting" ||
+							c.state === "dead" ||
+							c.health === "unhealthy";
 
-					if (isHighCpu || isUnhealthy) {
-						try {
-							const targetDocker = await getRemoteDocker(undefined);
-							const container = targetDocker.getContainer(c.id);
-							await container.restart();
-							restarted.push({
-								name: c.name || c.id.slice(0, 12),
-								containerId: c.id,
-								serverName: "Local Controller",
-								reason: isHighCpu
-									? `CPU quá tải (${c.CPUPerc})`
-									: `Trạng thái: ${c.state || c.health || "Lỗi"}`,
-							});
-						} catch {
-							// skip on individual restart error
+						if (isHighCpu || isUnhealthy) {
+							try {
+								const targetDocker = await getRemoteDocker(undefined);
+								const container = targetDocker.getContainer(c.id);
+								await container.restart();
+								restarted.push({
+									name: c.name || c.id.slice(0, 12),
+									containerId: c.id,
+									serverName: "Local Controller",
+									reason: isHighCpu
+										? `CPU quá tải (${c.CPUPerc})`
+										: `Trạng thái: ${c.state || c.health || "Lỗi"}`,
+								});
+							} catch {
+								// skip on individual restart error
+							}
 						}
 					}
-				}
-			} catch {}
+				} catch {}
+			}
 
-			// 2. Inspect remote servers concurrently
+			// 2. Inspect remote servers
 			for (const srv of remoteServers) {
 				try {
 					const remoteStats = await getAllContainerStats(srv.serverId);
@@ -772,6 +1037,12 @@ networks:
 				} catch {}
 			}
 
+			await audit(ctx, {
+				action: "update",
+				resourceType: "docker",
+				resourceName: `fleet-bulk-restart-${restarted.length}`,
+			});
+
 			return {
 				success: true,
 				restartedCount: restarted.length,
@@ -780,23 +1051,53 @@ networks:
 		}),
 
 	/**
-	 * Returns full-system interactive topology graph: Ingress -> Multi-Cluster Fleet -> Workloads -> Data
+	 * Returns full-system interactive topology graph strictly scoped to activeOrganizationId:
+	 * Ingress -> Multi-Cluster Fleet -> Workloads -> Data
 	 */
 	getTopologyGraph: protectedProcedure.query(async ({ ctx }) => {
 		const orgId = ctx.session.activeOrganizationId;
 
-		// 1. Ingress Layer
-		const domainsList = await db.query.domains.findMany().catch(() => []);
-		const appsList = await db.query.applications.findMany().catch(() => []);
-		const composeList = await db.query.compose.findMany().catch(() => []);
-		const pgList = await db.query.postgres.findMany().catch(() => []);
-		const redisList = await db.query.redis.findMany().catch(() => []);
-		const mysqlList = await db.query.mysql.findMany().catch(() => []);
-		const mariadbList = await db.query.mariadb.findMany().catch(() => []);
-		const mongoList = await db.query.mongo.findMany().catch(() => []);
-		const serversList = await db.query.server.findMany({
-			where: eq(server.organizationId, orgId),
-		}).catch(() => []);
+		// Strictly scope all projects, environments, workloads, domains, and databases to activeOrganizationId
+		const [orgProjects, serversList] = await Promise.all([
+			db.query.projects
+				.findMany({
+					where: eq(projects.organizationId, orgId),
+					with: {
+						environments: {
+							with: {
+								applications: { with: { domains: true } },
+								compose: { with: { domains: true } },
+								postgres: true,
+								redis: true,
+								mysql: true,
+								mariadb: true,
+								mongo: true,
+								libsql: true,
+							},
+						},
+					},
+				})
+				.catch(() => []),
+			db.query.server
+				.findMany({
+					where: eq(server.organizationId, orgId),
+				})
+				.catch(() => []),
+		]);
+
+		const envs = orgProjects.flatMap((p) => p.environments || []);
+		const appsList = envs.flatMap((e) => e.applications || []);
+		const composeList = envs.flatMap((e) => e.compose || []);
+		const domainsList = [
+			...appsList.flatMap((a) => a.domains || []),
+			...composeList.flatMap((c) => c.domains || []),
+		];
+		const pgList = envs.flatMap((e) => e.postgres || []);
+		const redisList = envs.flatMap((e) => e.redis || []);
+		const mysqlList = envs.flatMap((e) => e.mysql || []);
+		const mariadbList = envs.flatMap((e) => e.mariadb || []);
+		const mongoList = envs.flatMap((e) => e.mongo || []);
+		const libsqlList = envs.flatMap((e) => e.libsql || []);
 
 		const nodes: any[] = [];
 		const edges: any[] = [];
@@ -954,6 +1255,7 @@ networks:
 			...mysqlList.map((d) => ({ ...d, dbType: "MySQL", dbId: `db-mysql-${d.mysqlId}` })),
 			...mariadbList.map((d) => ({ ...d, dbType: "MariaDB", dbId: `db-mariadb-${d.mariadbId}` })),
 			...mongoList.map((d) => ({ ...d, dbType: "MongoDB", dbId: `db-mongo-${d.mongoId}` })),
+			...libsqlList.map((d) => ({ ...d, dbType: "LibSQL", dbId: `db-libsql-${d.libsqlId}` })),
 		];
 
 		if (allDbs.length > 0) {

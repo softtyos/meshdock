@@ -237,16 +237,20 @@ export const setupWebMonitoring = async () => {
 				Replicas: 1,
 			},
 		},
-		EndpointSpec: {
-			Ports: [
-				{
-					TargetPort: port,
-					PublishedPort: port,
-					Protocol: "tcp",
-					PublishMode: "host",
-				},
-			],
-		},
+		...(process.env.NODE_ENV !== "production"
+			? {
+					EndpointSpec: {
+						Ports: [
+							{
+								TargetPort: port,
+								PublishedPort: port,
+								Protocol: "tcp",
+								PublishMode: "host",
+							},
+						],
+					},
+			  }
+			: {}),
 	};
 
 	const docker = await getRemoteDocker();
@@ -330,16 +334,20 @@ export const setupGlobalSwarmAgent = async (serverId?: string) => {
 		Mode: {
 			Global: {},
 		},
-		EndpointSpec: {
-			Ports: [
-				{
-					TargetPort: port,
-					PublishedPort: port,
-					Protocol: "tcp",
-					PublishMode: "host",
-				},
-			],
-		},
+		...(serverId || process.env.NODE_ENV !== "production"
+			? {
+					EndpointSpec: {
+						Ports: [
+							{
+								TargetPort: port,
+								PublishedPort: port,
+								Protocol: "tcp",
+								PublishMode: "host",
+							},
+						],
+					},
+			  }
+			: {}),
 	};
 
 	const docker = await getRemoteDocker(serverId);

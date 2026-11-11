@@ -74,10 +74,10 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 				containerId,
 				serverId: nodeId && nodeId !== "local-host" ? nodeId : null,
 			});
-			toast.success(`Container ${containerId.slice(0, 10)} restarted`);
+			toast.success(`Đã khởi động lại container ${containerId.slice(0, 10)}`);
 			void utils.fleet.getFleetContainers.invalidate();
 		} catch (err: any) {
-			toast.error(err?.message || "Failed to restart container");
+			toast.error(err?.message || "Không thể khởi động lại container");
 		}
 	};
 
@@ -102,10 +102,16 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 				<div>
 					<h3 className="text-base font-bold text-foreground flex items-center gap-2">
 						<Activity className="h-4 w-4 text-emerald-400" />
-						Grafana-Grade Live Fleet Telemetry
+						Biểu Đồ Telemetry Phần Cứng Thời Gian Thực
+						<Badge
+							variant="outline"
+							className="text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold"
+						>
+							Real Metrics
+						</Badge>
 					</h3>
 					<p className="text-xs text-muted-foreground mt-0.5">
-						Real-time metrics stream: {nodeName || "Aggregated Fleet"} (Polling every 10s)
+						Nguồn dữ liệu phần cứng trực tiếp: {nodeName || "Local Controller (application.softty.net)"} • Chu kỳ lấy mẫu 10s
 					</p>
 				</div>
 
@@ -119,7 +125,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 							void refetchContainers();
 						}}
 					>
-						<RefreshCw className="h-3.5 w-3.5" /> Refresh Telemetry
+						<RefreshCw className="h-3.5 w-3.5" /> Làm mới số liệu
 					</Button>
 				</div>
 			</div>
@@ -127,21 +133,21 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 			{/* Telemetry Charts Grid */}
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 				{/* CPU Usage Chart */}
-				<Card className="bg-card/60 border-border/70">
+				<Card className="bg-card/60 border-border/60">
 					<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
 						<div>
 							<CardTitle className="text-sm font-semibold flex items-center gap-2">
-								<Cpu className="h-4 w-4 text-emerald-400" /> CPU Utilization
+								<Cpu className="h-4 w-4 text-emerald-400" /> Hiệu Suất CPU
 							</CardTitle>
 							<CardDescription className="text-xs">
-								Live CPU load percentage over time
+								Tỷ lệ tải vi xử lý thực tế theo thời gian
 							</CardDescription>
 						</div>
 						<div className="text-right">
-							<span className="text-lg font-bold font-mono text-emerald-400">
+							<span className="text-lg font-bold font-mono tabular-nums text-emerald-400">
 								{latest?.cpu ?? "--"}%
 							</span>
-							<p className="text-[10px] text-muted-foreground uppercase">Current Load</p>
+							<p className="text-[10px] text-muted-foreground uppercase">Tải hiện tại</p>
 						</div>
 					</CardHeader>
 					<CardContent className="p-4 pt-1">
@@ -183,22 +189,22 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 				</Card>
 
 				{/* Memory Allocation Chart */}
-				<Card className="bg-card/60 border-border/70">
+				<Card className="bg-card/60 border-border/60">
 					<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
 						<div>
 							<CardTitle className="text-sm font-semibold flex items-center gap-2">
-								<Zap className="h-4 w-4 text-cyan-400" /> Memory Allocation
+								<Zap className="h-4 w-4 text-cyan-400" /> Phân Bổ Bộ Nhớ RAM
 							</CardTitle>
 							<CardDescription className="text-xs">
-								Resident RAM in use vs capacity
+								Dung lượng RAM thực tế đang cấp phát trên tổng dung lượng
 							</CardDescription>
 						</div>
 						<div className="text-right">
-							<span className="text-lg font-bold font-mono text-cyan-400">
+							<span className="text-lg font-bold font-mono tabular-nums text-cyan-400">
 								{latest?.memUsedGB ?? "--"} GB
 							</span>
 							<p className="text-[10px] text-muted-foreground uppercase">
-								Of {latest?.memTotalGB ?? 8} GB
+								Trên {latest?.memTotalGB ?? "--"} GB ({latest?.memPerc ?? 0}%)
 							</p>
 						</div>
 					</CardHeader>
@@ -219,7 +225,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 										stroke={chartAxisLineColor}
 									/>
 									<YAxis
-										domain={[0, (latest?.memTotalGB || 8) * 1.1]}
+										domain={[0, Math.ceil((latest?.memTotalGB || 8) * 1.05)]}
 										tick={{ fill: chartAxisTextColor, fontSize: 10 }}
 										stroke={chartAxisLineColor}
 										unit="GB"
@@ -232,7 +238,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 										strokeWidth={2}
 										fillOpacity={1}
 										fill="url(#memGrad)"
-										name="Used GB"
+										name="RAM đã dùng (GB)"
 									/>
 								</AreaChart>
 							</ResponsiveContainer>
@@ -241,17 +247,17 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 				</Card>
 
 				{/* Network In/Out Chart */}
-				<Card className="bg-card/60 border-border/70 lg:col-span-2">
+				<Card className="bg-card/60 border-border/60 lg:col-span-2">
 					<CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
 						<div>
 							<CardTitle className="text-sm font-semibold flex items-center gap-2">
-								<Activity className="h-4 w-4 text-purple-400" /> Network Throughput (I/O)
+								<Activity className="h-4 w-4 text-purple-400" /> Băng Thông Mạng (Network I/O)
 							</CardTitle>
 							<CardDescription className="text-xs">
-								Live ingress (Rx) vs egress (Tx) bandwidth
+								Lưu lượng nhận vào (Rx) và truyền ra (Tx) theo thời gian thực
 							</CardDescription>
 						</div>
-						<div className="flex items-center gap-4 text-xs font-mono">
+						<div className="flex items-center gap-4 text-xs font-mono tabular-nums">
 							<span className="flex items-center gap-1.5 text-purple-400 font-semibold">
 								<span className="h-2 w-2 rounded-full bg-purple-400" /> Rx: {latest?.netInKB ?? 0} KB/s
 							</span>
@@ -282,7 +288,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 										stroke="#a855f7"
 										strokeWidth={2}
 										dot={false}
-										name="Ingress (Rx)"
+										name="Nhận vào (Rx KB/s)"
 									/>
 									<Line
 										type="monotone"
@@ -290,7 +296,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 										stroke="#f59e0b"
 										strokeWidth={2}
 										dot={false}
-										name="Egress (Tx)"
+										name="Truyền ra (Tx KB/s)"
 									/>
 								</LineChart>
 							</ResponsiveContainer>
@@ -300,42 +306,42 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 			</div>
 
 			{/* Top Resource Consuming Containers Table */}
-			<Card className="bg-card/60 border-border/70">
-				<CardHeader className="p-4 border-b">
+			<Card className="bg-card/60 border-border/60">
+				<CardHeader className="p-4 border-b border-border/60">
 					<div className="flex items-center justify-between">
 						<div>
 							<CardTitle className="text-sm font-bold flex items-center gap-2">
 								<Boxes className="h-4 w-4 text-emerald-400" />
-								Top Resource-Consuming Containers
+								Top Container Tiêu Thụ Tài Nguyên Cao Nhất
 							</CardTitle>
 							<CardDescription className="text-xs">
-								Live CPU and Memory footprint across active containers
+								Thống kê trực tiếp CPU, RAM và I/O của các container đang hoạt động
 							</CardDescription>
 						</div>
 						<Badge variant="outline" className="text-xs font-mono">
-							{containersData?.totalCount ?? 0} Containers Active
+							{containersData?.totalCount ?? 0} Container đang chạy
 						</Badge>
 					</div>
 				</CardHeader>
 				<CardContent className="p-0">
 					{isContainersLoading ? (
 						<div className="flex items-center justify-center py-10 text-xs text-muted-foreground">
-							<Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading container metrics...
+							<Loader2 className="h-4 w-4 animate-spin mr-2" /> Đang tải chỉ số container...
 						</div>
 					) : (containersData?.topCpu?.length ?? 0) === 0 ? (
 						<div className="text-center py-8 text-xs text-muted-foreground">
-							No running containers detected on this node/cluster.
+							Không có container nào đang chạy trên node này.
 						</div>
 					) : (
 						<Table>
 							<TableHeader>
 								<TableRow className="border-border/60 hover:bg-transparent">
-									<TableHead className="text-xs">Container Name</TableHead>
+									<TableHead className="text-xs">Tên Container</TableHead>
 									<TableHead className="text-xs">CPU %</TableHead>
-									<TableHead className="text-xs">Memory</TableHead>
+									<TableHead className="text-xs">Bộ nhớ RAM</TableHead>
 									<TableHead className="text-xs">Network I/O</TableHead>
 									<TableHead className="text-xs">Block I/O</TableHead>
-									<TableHead className="text-xs text-right">Actions</TableHead>
+									<TableHead className="text-xs text-right">Thao tác</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -349,16 +355,16 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 												</span>
 											</div>
 										</TableCell>
-										<TableCell className="font-mono text-xs text-emerald-400 font-semibold">
+										<TableCell className="font-mono tabular-nums text-xs text-emerald-400 font-semibold">
 											{c.CPUPerc || "0%"}
 										</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground">
+										<TableCell className="font-mono tabular-nums text-xs text-muted-foreground">
 											{c.MemUsage || "0B"} ({c.MemPerc || "0%"})
 										</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground">
+										<TableCell className="font-mono tabular-nums text-xs text-muted-foreground">
 											{c.NetIO || "0B / 0B"}
 										</TableCell>
-										<TableCell className="font-mono text-xs text-muted-foreground">
+										<TableCell className="font-mono tabular-nums text-xs text-muted-foreground">
 											{c.BlockIO || "0B / 0B"}
 										</TableCell>
 										<TableCell className="text-right">
@@ -369,7 +375,7 @@ export const FleetTelemetry = ({ nodeId, nodeName }: FleetTelemetryProps) => {
 												onClick={() => handleRestart(c.ID || c.Container)}
 												disabled={isRestarting}
 											>
-												<RotateCw className="h-3 w-3" /> Restart
+												<RotateCw className="h-3 w-3" /> Khởi động lại
 											</Button>
 										</TableCell>
 									</TableRow>

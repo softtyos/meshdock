@@ -682,13 +682,17 @@ export const userRouter = createTRPCRouter({
 					);
 				}
 				let resolvedUrl = `${input.url}/metrics/containers`;
+				const webSettings = await getWebServerSettings().catch(() => null);
 				try {
 					const parsed = new URL(resolvedUrl);
 					if (
 						!parsed.hostname ||
 						parsed.hostname === "undefined" ||
 						parsed.hostname === "localhost" ||
-						parsed.hostname === "127.0.0.1"
+						parsed.hostname === "127.0.0.1" ||
+						(process.env.NODE_ENV === "production" &&
+							webSettings?.serverIp &&
+							parsed.hostname === webSettings.serverIp)
 					) {
 						parsed.hostname =
 							process.env.NODE_ENV === "production"

@@ -76,17 +76,17 @@ export const UpdateServer = ({
 
 			if (fetchedData.updateAvailable) {
 				toast.success(versionToUpdate, {
-					description: "New version available!",
+					description: "Đã tìm thấy phiên bản nâng cấp mới!",
 				});
 			} else {
-				toast.info("No updates available");
+				toast.info("Hệ thống đang ở phiên bản mới nhất");
 			}
 		} catch (error) {
 			console.error("Error checking for updates:", error);
 			setHasCheckedUpdate(true);
 			setIsUpdateAvailable(false);
 			toast.error(
-				"An error occurred while checking for updates, please try again.",
+				"Không thể kiểm tra bản cập nhật lúc này, vui lòng thử lại sau.",
 			);
 		}
 	};
@@ -114,11 +114,11 @@ export const UpdateServer = ({
 									<Download className="h-4 w-4 shrink-0" />
 									{updateData ? (
 										<span className="font-medium truncate group-data-[collapsible=icon]:hidden">
-											Update Available
+											Có bản cập nhật mới
 										</span>
 									) : (
 										<span className="font-medium truncate group-data-[collapsible=icon]:hidden">
-											Check for updates
+											Kiểm tra cập nhật
 										</span>
 									)}
 									{updateData && (
@@ -131,7 +131,7 @@ export const UpdateServer = ({
 							</TooltipTrigger>
 							{updateData && (
 								<TooltipContent side="right" sideOffset={10}>
-									<p>Update Available</p>
+									<p>Có bản cập nhật mới</p>
 								</TooltipContent>
 							)}
 						</Tooltip>
@@ -139,14 +139,14 @@ export const UpdateServer = ({
 				)}
 			</DialogTrigger>
 			<DialogContent className="max-w-lg" showCloseButton={false}>
-				<div className="flex items-center gap-2 mb-8">
-					<DialogTitle className="text-2xl font-semibold mr-auto">
-						Web Server Update
+				<div className="flex items-center gap-2 mb-6">
+					<DialogTitle className="text-xl font-bold mr-auto">
+						Cập Nhật Hệ Thống
 					</DialogTitle>
 					{dokployVersion && (
-						<div className="flex items-center gap-1.5 rounded-full px-3 py-1 bg-muted">
-							<Server className="h-4 w-4 text-muted-foreground" />
-							<span className="text-sm text-muted-foreground">
+						<div className="flex items-center gap-1.5 rounded-full px-3 py-1 bg-muted border border-border/60">
+							<Server className="h-3.5 w-3.5 text-muted-foreground" />
+							<span className="text-xs font-mono font-semibold text-muted-foreground">
 								{dokployVersion}{" "}
 								{(releaseTag === "canary" || releaseTag === "feature") &&
 									`(${releaseTag})`}
@@ -156,20 +156,19 @@ export const UpdateServer = ({
 					<DialogClose asChild>
 						<Button variant="ghost" size="icon-sm" className="shrink-0">
 							<X />
-							<span className="sr-only">Close</span>
+							<span className="sr-only">Đóng</span>
 						</Button>
 					</DialogClose>
 				</div>
 
 				{/* Initial state */}
 				{!hasCheckedUpdate && (
-					<div className="mb-8">
-						<p className="text text-muted-foreground">
-							Check for new releases and update Meshdock.
+					<div className="mb-6">
+						<p className="text-sm text-muted-foreground leading-relaxed">
+							Kiểm tra và nâng cấp phiên bản mới nhất cho hệ thống quản trị Meshdock.
 							<br />
 							<br />
-							We recommend checking for updates regularly to ensure you have the
-							latest features and security improvements.
+							Khuyến nghị cập nhật định kỳ để nhận các tính năng tối ưu hiệu năng và bản vá bảo mật mới nhất.
 						</p>
 					</div>
 				)}
@@ -194,7 +193,7 @@ export const UpdateServer = ({
 							<div className="flex items-center justify-between p-3 rounded-lg bg-background/80 border border-border/50 text-xs">
 								<div className="flex flex-col">
 									<span className="text-[10px] text-muted-foreground uppercase font-medium">Bản hiện tại</span>
-									<span className="font-mono font-bold text-foreground text-sm">{dokployVersion || "v1.0.3"}</span>
+									<span className="font-mono font-bold text-foreground text-sm">{dokployVersion || "v1.0.5"}</span>
 								</div>
 								<div className="flex items-center gap-1.5 text-emerald-500 font-bold text-base px-2">
 									<span>➔</span>
@@ -206,23 +205,21 @@ export const UpdateServer = ({
 							</div>
 						</div>
 
-						<div className="space-y-4 text-muted-foreground">
-							<p className="text">
-								A new version of the server software is available. Consider
-								updating if you:
+						<div className="space-y-3 text-sm text-muted-foreground">
+							<p>
+								Bản phát hành mới đã sẵn sàng trên Docker Hub. Nâng cấp ngay để:
 							</p>
-							<ul className="space-y-3">
+							<ul className="space-y-2.5">
 								<li className="flex items-start gap-2">
-									<Stars className="h-5 w-5 mt-0.5 text-[#5B9DFF]" />
-									<span className="text">
-										Want to access the latest features and improvements
+									<Stars className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
+									<span>
+										Cập nhật giao diện Pro Max, tính năng quản trị cụm và tối ưu hiệu suất mới nhất
 									</span>
 								</li>
 								<li className="flex items-start gap-2">
-									<Bug className="h-5 w-5 mt-0.5 text-[#5B9DFF]" />
-									<span className="text">
-										Are experiencing issues that may be resolved in the new
-										version
+									<Bug className="h-4 w-4 mt-0.5 text-cyan-500 shrink-0" />
+									<span>
+										Khắc phục triệt để các lỗi tồn đọng và tăng cường bảo mật toàn hệ thống
 									</span>
 								</li>
 							</ul>
@@ -233,17 +230,16 @@ export const UpdateServer = ({
 				{/* Up to date state */}
 				{hasCheckedUpdate && !isUpdateAvailable && !isPending && (
 					<div className="mb-8">
-						<div className="flex flex-col items-center gap-6 mb-6">
+						<div className="flex flex-col items-center gap-5 mb-4">
 							<div className="rounded-full p-4 bg-emerald-500/15 border border-emerald-500/20">
 								<Sparkles className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
 							</div>
-							<div className="text-center space-y-2">
-								<h3 className="text-lg font-medium">
-									You are using the latest version
+							<div className="text-center space-y-1.5">
+								<h3 className="text-base font-semibold text-foreground">
+									Hệ thống đang ở phiên bản mới nhất
 								</h3>
-								<p className="text text-muted-foreground">
-									Your server is up to date with all the latest features and
-									security improvements.
+								<p className="text-sm text-muted-foreground">
+									Máy chủ của bạn đã được đồng bộ đầy đủ các tính năng và bản vá bảo mật mới nhất.
 								</p>
 							</div>
 						</div>
@@ -252,15 +248,14 @@ export const UpdateServer = ({
 
 				{hasCheckedUpdate && isPending && (
 					<div className="mb-8">
-						<div className="flex flex-col items-center gap-6 mb-6">
+						<div className="flex flex-col items-center gap-5 mb-4">
 							<div className="rounded-full p-4 bg-primary/10 text-primary">
 								<RefreshCcw className="h-8 w-8 animate-spin" />
 							</div>
-							<div className="text-center space-y-2">
-								<h3 className="text-lg font-medium">Checking for updates...</h3>
-								<p className="text text-muted-foreground">
-									Please wait while we pull the latest version information from
-									Docker Hub.
+							<div className="text-center space-y-1.5">
+								<h3 className="text-base font-semibold">Đang kiểm tra bản cập nhật...</h3>
+								<p className="text-sm text-muted-foreground">
+									Đang truy vấn thông tin phiên bản mới nhất từ kho lưu trữ Docker Hub.
 								</p>
 							</div>
 						</div>
@@ -268,19 +263,19 @@ export const UpdateServer = ({
 				)}
 
 				{isUpdateAvailable && (
-					<div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 mb-8 text-blue-600 dark:text-blue-400">
-						<div className="flex gap-2">
-							<Info className="h-5 w-5 shrink-0 text-blue-500" />
+					<div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3.5 mb-6 text-xs text-blue-600 dark:text-blue-400">
+						<div className="flex gap-2 items-start">
+							<Info className="h-4 w-4 shrink-0 text-blue-500 mt-0.5" />
 							<div>
-								We recommend reviewing the{" "}
+								Quá trình nâng cấp diễn ra tự động thông qua Docker Swarm Rolling Update (không gây gián đoạn các ứng dụng đang chạy). Xem chi tiết tại{" "}
 								<Link
 									href="https://github.com/softtyos/meshdock/releases"
 									target="_blank"
-									className="underline hover:opacity-80 font-medium"
+									className="underline hover:opacity-80 font-semibold"
 								>
-									release notes
-								</Link>{" "}
-								for any breaking changes before updating.
+									nhật ký phát hành
+								</Link>
+								.
 							</div>
 						</div>
 					</div>
@@ -293,7 +288,7 @@ export const UpdateServer = ({
 				<div className="flex items-center justify-end mt-4">
 					<div className="flex items-center gap-2">
 						<Button variant="outline" onClick={() => onOpenChange?.(false)}>
-							Cancel
+							Đóng
 						</Button>
 						{isUpdateAvailable ? (
 							<UpdateWebServer
@@ -310,12 +305,12 @@ export const UpdateServer = ({
 								{isPending ? (
 									<>
 										<RefreshCcw className="h-4 w-4 animate-spin" />
-										Checking for updates
+										Đang kiểm tra...
 									</>
 								) : (
 									<>
 										<RefreshCcw className="h-4 w-4" />
-										Check for updates
+										Kiểm tra cập nhật
 									</>
 								)}
 							</Button>

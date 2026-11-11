@@ -20,8 +20,8 @@ export const ToggleAutoCheckUpdates = ({ disabled }: { disabled: boolean }) => {
 				id="autoCheckUpdatesToggle"
 				disabled={disabled}
 			/>
-			<Label className="text-primary" htmlFor="autoCheckUpdatesToggle">
-				Automatically check for new updates
+			<Label className="text-primary cursor-pointer text-sm" htmlFor="autoCheckUpdatesToggle">
+				Tự động kiểm tra bản cập nhật mới
 			</Label>
 		</div>
 	);

@@ -7,16 +7,26 @@ import {
 	optimizeHostResources,
 } from "@dokploy/server";
 import { execAsync, execAsyncRemote } from "@dokploy/server/utils/process/execAsync";
-import { TRPCError } from "@trpc/server";
+import { quote } from "shell-quote";
 import { z } from "zod";
 import { audit } from "@/server/api/utils/audit";
-import { createTRPCRouter, protectedProcedure, withPermission } from "../trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	withPermission,
+} from "../trpc";
+
+const safeContainerIdSchema = z
+	.string()
+	.min(1, "Container ID không được để trống")
+	.max(128, "Container ID quá dài")
+	.regex(/^[a-zA-Z0-9_.-]+$/, "Container ID chứa ký tự không hợp lệ");
 
 export const vitalsRouter = createTRPCRouter({
 	/**
 	 * Real-time Host VPS Health & Vitals (CPU, RAM, Disk, Uptime, Docker Storage, AI Health Score)
 	 */
-	getHostVitals: protectedProcedure
+	getHostVitals: withPermission("docker", "read")
 		.input(
 			z
 				.object({
@@ -25,9 +35,7 @@ export const vitalsRouter = createTRPCRouter({
 				.optional(),
 		)
 		.query(async ({ input, ctx }) => {
-			if (input?.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input?.serverId ?? null);
 			return await getHostVitals(input?.serverId);
 		}),
 
@@ -43,16 +51,14 @@ export const vitalsRouter = createTRPCRouter({
 				.optional(),
 		)
 		.query(async ({ input, ctx }) => {
-			if (input?.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input?.serverId ?? null);
 			return await getDetailedContainerVitals(input?.serverId);
 		}),
 
 	/**
-	 * 1-Click Resource Optimizer & Disk Cleaner
+	 * 1-Click Resource Optimizer & Disk Cleaner (Owner / Admin only)
 	 */
-	optimize: withPermission("docker", "read")
+	optimize: adminProcedure
 		.input(
 			z.object({
 				serverId: z.string().optional().nullable(),
@@ -60,9 +66,7 @@ export const vitalsRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const result = await optimizeHostResources(input.serverId, input.target);
 			await audit(ctx, {
 				action: "delete",
@@ -75,7 +79,7 @@ export const vitalsRouter = createTRPCRouter({
 	/**
 	 * Security & Open Port Matrix Inspector: scans listening ports, maps containers/services, and classifies risks
 	 */
-	getSecurityInspection: protectedProcedure
+	getSecurityInspection: withPermission("docker", "read")
 		.input(
 			z
 				.object({
@@ -84,26 +88,22 @@ export const vitalsRouter = createTRPCRouter({
 				.optional(),
 		)
 		.query(async ({ input, ctx }) => {
-			if (input?.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input?.serverId ?? null);
 			return await getSecurityInspection(input?.serverId);
 		}),
 
 	/**
 	 * Container Quick Operations
 	 */
-	restartContainer: withPermission("docker", "read")
+	restartContainer: withPermission("service", "create")
 		.input(
 			z.object({
-				containerId: z.string(),
+				containerId: safeContainerIdSchema,
 				serverId: z.string().optional().nullable(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const targetDocker = await getRemoteDocker(input.serverId ?? undefined);
 			const container = targetDocker.getContainer(input.containerId);
 			await container.restart();
@@ -116,17 +116,15 @@ export const vitalsRouter = createTRPCRouter({
 			return { ok: true };
 		}),
 
-	stopContainer: withPermission("docker", "read")
+	stopContainer: withPermission("service", "create")
 		.input(
 			z.object({
-				containerId: z.string(),
+				containerId: safeContainerIdSchema,
 				serverId: z.string().optional().nullable(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const targetDocker = await getRemoteDocker(input.serverId ?? undefined);
 			const container = targetDocker.getContainer(input.containerId);
 			await container.stop();
@@ -139,17 +137,15 @@ export const vitalsRouter = createTRPCRouter({
 			return { ok: true };
 		}),
 
-	startContainer: withPermission("docker", "read")
+	startContainer: withPermission("service", "create")
 		.input(
 			z.object({
-				containerId: z.string(),
+				containerId: safeContainerIdSchema,
 				serverId: z.string().optional().nullable(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const targetDocker = await getRemoteDocker(input.serverId ?? undefined);
 			const container = targetDocker.getContainer(input.containerId);
 			await container.start();
@@ -165,26 +161,31 @@ export const vitalsRouter = createTRPCRouter({
 	getContainerLogs: withPermission("docker", "read")
 		.input(
 			z.object({
-				containerId: z.string(),
+				containerId: safeContainerIdSchema,
 				serverId: z.string().optional().nullable(),
 				tail: z.number().default(100),
 			}),
 		)
 		.query(async ({ input, ctx }) => {
-			if (input.serverId) {
-				await assertServerAccess(ctx.session, input.serverId);
-			}
+			await assertServerAccess(ctx.session, input.serverId ?? null);
 			const safeTail = Math.min(Math.max(10, input.tail), 500);
-			const cmd = `docker logs --tail ${safeTail} --timestamps "${input.containerId}" 2>&1`;
+			const cmd = `${quote([
+				"docker",
+				"logs",
+				"--tail",
+				String(safeTail),
+				"--timestamps",
+				input.containerId,
+			])} 2>&1`;
 			let stdout = "";
 			if (input.serverId) {
 				const res = await execAsyncRemote(input.serverId, cmd).catch((e: any) => ({
-					stdout: e?.message || "Failed to read logs",
+					stdout: e?.message || "Không thể đọc nhật ký container",
 				}));
 				stdout = res.stdout;
 			} else {
 				const res = await execAsync(cmd).catch((e: any) => ({
-					stdout: e?.message || "Failed to read logs",
+					stdout: e?.message || "Không thể đọc nhật ký container",
 				}));
 				stdout = res.stdout;
 			}

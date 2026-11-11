@@ -65,7 +65,7 @@ const MonitoringPage = () => {
 		},
 	);
 
-	// Container Vitals Query
+	// Container Vitals Query (only active when viewing the Vitals tab)
 	const {
 		data: containerVitals = [],
 		isLoading: isContainersLoading,
@@ -74,12 +74,13 @@ const MonitoringPage = () => {
 	} = api.vitals.getContainerVitals.useQuery(
 		{ serverId: serverIdQuery },
 		{
-			refetchInterval: pollInterval,
+			enabled: activeTab === "vitals",
+			refetchInterval: activeTab === "vitals" ? pollInterval : false,
 			refetchOnWindowFocus: false,
 		},
 	);
 
-	// Security & Port Inspector Query
+	// Security & Port Inspector Query (only active when viewing the Security tab to avoid background netns scans)
 	const {
 		data: securityData,
 		isLoading: isSecurityLoading,
@@ -88,7 +89,8 @@ const MonitoringPage = () => {
 	} = api.vitals.getSecurityInspection.useQuery(
 		{ serverId: serverIdQuery },
 		{
-			refetchInterval: pollInterval,
+			enabled: activeTab === "security",
+			refetchInterval: activeTab === "security" ? pollInterval : false,
 			refetchOnWindowFocus: false,
 		},
 	);
@@ -99,13 +101,23 @@ const MonitoringPage = () => {
 		enabled: activeTab === "charts",
 	});
 
-	const isRefreshing = isHostRefetching || isContainersRefetching || isSecurityRefetching;
-	const isLoading = isHostLoading || isContainersLoading || isSecurityLoading;
+	const isRefreshing =
+		isHostRefetching ||
+		(activeTab === "vitals" && isContainersRefetching) ||
+		(activeTab === "security" && isSecurityRefetching);
+	const isLoading =
+		isHostLoading ||
+		(activeTab === "vitals" && isContainersLoading) ||
+		(activeTab === "security" && isSecurityLoading);
 
 	const handleManualRefresh = () => {
-		refetchHost();
-		refetchContainers();
-		refetchSecurity();
+		void refetchHost();
+		if (activeTab === "vitals") {
+			void refetchContainers();
+		}
+		if (activeTab === "security") {
+			void refetchSecurity();
+		}
 	};
 
 	return (
@@ -121,7 +133,7 @@ const MonitoringPage = () => {
 							<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
 								System Vitals & Quản Trị Máy Chủ
 								<span className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-									Pro Max v1.0.0
+									Pro Max
 								</span>
 							</h1>
 							<p className="text-xs sm:text-sm text-muted-foreground mt-0.5">

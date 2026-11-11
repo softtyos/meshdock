@@ -82,6 +82,29 @@ export interface ContainerVitalItem {
 	isSystem: boolean;
 }
 
+const parseDockerSizeToBytes = (raw?: string): number => {
+	if (!raw) return 0;
+	// Extract first numeric + unit token, e.g. "49.27GB (52%)" -> 49.27, "GB"
+	const match = raw.trim().match(/^([0-9]+(?:\.[0-9]+)?)\s*(kB|KB|MB|GB|TB|KiB|MiB|GiB|TiB|B)/i);
+	if (!match) return 0;
+	const value = Number.parseFloat(match[1] || "0");
+	const unit = (match[2] || "B").toUpperCase();
+	if (unit === "B") return value;
+	if (unit === "KB" || unit === "KIB") return value * 1024;
+	if (unit === "MB" || unit === "MIB") return value * 1024 ** 2;
+	if (unit === "GB" || unit === "GIB") return value * 1024 ** 3;
+	if (unit === "TB" || unit === "TIB") return value * 1024 ** 4;
+	return value;
+};
+
+const formatBytesShort = (bytes: number): string => {
+	if (bytes <= 0) return "0 B";
+	if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+	if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+	if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+	return `${Math.round(bytes)} B`;
+};
+
 const formatUptime = (seconds: number): string => {
 	const days = Math.floor(seconds / 86400);
 	const hours = Math.floor((seconds % 86400) / 3600);
@@ -214,6 +237,13 @@ echo "host:$hostName|cores:$cpuCores|load:$loadAvg|uptime:$uptimeSec|mem:$memDat
 		}
 	}
 
+	// Compute total safe reclaimable storage (Images + Containers + Build Cache; excludes Volumes)
+	const safeReclaimableBytes =
+		parseDockerSizeToBytes(dockerStorage.images.reclaimable) +
+		parseDockerSizeToBytes(dockerStorage.containers.reclaimable) +
+		parseDockerSizeToBytes(dockerStorage.buildCache.reclaimable);
+	dockerStorage.totalReclaimableText = formatBytesShort(safeReclaimableBytes);
+
 	// Calculate percentages
 	const loadPercent = Math.min(100, Math.round((load1 / (cores || 1)) * 100));
 	const memUsedPercent = memTotal > 0 ? Math.round((memUsed / memTotal) * 100) : 0;
@@ -247,6 +277,17 @@ echo "host:$hostName|cores:$cpuCores|load:$loadAvg|uptime:$uptimeSec|mem:$memDat
 			level: "critical",
 			message: `Dung lượng ổ cứng root đã dùng ${diskUsedPercent}%`,
 			recommendation: "Dọn dẹp Build Cache và Docker Images rác để tránh đầy ổ đĩa.",
+		});
+	}
+
+	const unusedImageBytes = parseDockerSizeToBytes(dockerStorage.images.reclaimable);
+	if (unusedImageBytes >= 5 * 1024 ** 3) {
+		score -= 5;
+		issues.push({
+			level: "warning",
+			message: `Dung lượng Docker Images cũ không sử dụng lớn: ${dockerStorage.images.reclaimable}`,
+			recommendation:
+				"Sử dụng chế độ 'Tối ưu Toàn diện An toàn' để thu hồi dung lượng Images cũ mà vẫn bảo toàn 100% dữ liệu Volumes.",
 		});
 	}
 
@@ -488,28 +529,62 @@ export const getDetailedContainerVitals = async (
 export const optimizeHostResources = async (
 	serverId?: string | null,
 	target: "all" | "buildCache" | "images" | "containers" | "volumes" = "all",
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; reclaimedText?: string }> => {
 	const sid = serverId ?? undefined;
+
+	// Measure reclaimable Docker storage prior to cleanup for accurate feedback
+	let beforeVitals: HostVitalsResult | null = null;
+	try {
+		beforeVitals = await getHostVitals(serverId);
+	} catch {}
+
 	switch (target) {
-		case "buildCache":
+		case "buildCache": {
+			const est = beforeVitals?.dockerStorage.buildCache.reclaimable || "0 B";
 			await cleanupBuilders(sid);
-			return { success: true, message: "Đã dọn dẹp toàn bộ Docker Build Cache thành công." };
-		case "images":
+			return {
+				success: true,
+				reclaimedText: est,
+				message: `Đã dọn sạch Docker Build Cache (thu hồi ~${est}).`,
+			};
+		}
+		case "images": {
+			const est = beforeVitals?.dockerStorage.images.reclaimable || "0 B";
 			await cleanupImages(sid);
-			return { success: true, message: "Đã dọn dẹp các Docker Images rác không sử dụng." };
-		case "containers":
+			return {
+				success: true,
+				reclaimedText: est,
+				message: `Đã dọn sạch Docker Images không sử dụng (thu hồi ~${est}).`,
+			};
+		}
+		case "containers": {
+			const est = beforeVitals?.dockerStorage.containers.reclaimable || "0 B";
 			await cleanupContainers(sid);
-			return { success: true, message: "Đã xóa các container đã dừng hoạt động." };
-		case "volumes":
+			return {
+				success: true,
+				reclaimedText: est,
+				message: `Đã xóa các container đã dừng hoạt động (thu hồi ~${est}).`,
+			};
+		}
+		case "volumes": {
+			const est = beforeVitals?.dockerStorage.volumes.reclaimable || "0 B";
 			await cleanupVolumes(sid);
-			return { success: true, message: "Đã dọn dẹp các Volume mồ côi." };
+			return {
+				success: true,
+				reclaimedText: est,
+				message: `Đã dọn dẹp các Volume mồ côi (thu hồi ~${est}).`,
+			};
+		}
 		case "all":
-		default:
+		default: {
+			const est = beforeVitals?.dockerStorage.totalReclaimableText || "0 B";
 			await cleanupAll(sid);
 			return {
 				success: true,
-				message: "Đã kích hoạt tối ưu hóa toàn diện: dọn dẹp Images, Build Cache và Containers rác!",
+				reclaimedText: est,
+				message: `Đã dọn toàn diện Images + Build Cache + Containers rác (thu hồi ~${est}, bảo toàn Volumes).`,
 			};
+		}
 	}
 };
 
