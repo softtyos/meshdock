@@ -50,10 +50,16 @@ export const UpdateServerButton = () => {
 
 				const fetchedUpdateData = await getUpdateData();
 
+				setUpdateData(
+					fetchedUpdateData || {
+						latestVersion: null,
+						updateAvailable: false,
+					},
+				);
+
 				if (fetchedUpdateData?.updateAvailable) {
 					// Stop interval when update is available
 					clearUpdatesInterval();
-					setUpdateData(fetchedUpdateData);
 				}
 			} catch (error) {
 				console.error("Error auto-checking for updates:", error);
