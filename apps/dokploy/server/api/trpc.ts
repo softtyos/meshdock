@@ -97,7 +97,7 @@ export const createTRPCContext = async (opts: CreateNextContextOptions) => {
 			? {
 					...user,
 					email: user.email,
-					role: user.role as "owner" | "member" | "admin",
+					role: (user.role === "user" ? "owner" : user.role) as "owner" | "member" | "admin",
 					id: user.id,
 					ownerId: user.ownerId,
 				}

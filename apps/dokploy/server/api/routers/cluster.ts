@@ -31,9 +31,14 @@ export const clusterRouter = createTRPCRouter({
 					});
 				}
 			}
-			const docker = await getRemoteDocker(input.serverId);
-			const workers: DockerNode[] = await docker.listNodes();
-			return workers;
+			try {
+				const docker = await getRemoteDocker(input.serverId);
+				const workers: DockerNode[] = await docker.listNodes();
+				return Array.isArray(workers) ? workers : [];
+			} catch (err: any) {
+				console.warn(`[cluster.getNodes] Could not list nodes on server ${input.serverId || "local"}:`, err?.message);
+				return [];
+			}
 		}),
 
 	removeWorker: withPermission("server", "delete")

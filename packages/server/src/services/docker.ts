@@ -23,8 +23,11 @@ export const getContainers = async (serverId?: string | null) => {
 			stderr = result.stderr;
 		}
 		if (stderr) {
-			console.error(`Error: ${stderr}`);
-			return;
+			console.warn(`[getContainers] stderr: ${stderr}`);
+		}
+
+		if (!stdout || !stdout.trim()) {
+			return [];
 		}
 
 		const lines = stdout.trim().split("\n");
@@ -92,9 +95,11 @@ export const getConfig = async (
 			stderr = result.stderr;
 		}
 
-		if (stderr) {
-			console.error(`Error: ${stderr}`);
-			return;
+		if (!stdout || !stdout.trim()) {
+			if (stderr) {
+				console.error(`Error: ${stderr}`);
+			}
+			return null;
 		}
 
 		const config = JSON.parse(stdout);
@@ -598,17 +603,29 @@ export const getSwarmNodes = async (serverId?: string) => {
 		}
 
 		if (stderr) {
-			console.error(`Error: ${stderr}`);
-			return;
+			console.warn(`[getSwarmNodes] stderr: ${stderr}`);
+		}
+
+		if (!stdout || !stdout.trim()) {
+			return [];
 		}
 
 		const nodesArray = stdout
 			.trim()
 			.split("\n")
-			.map((line) => JSON.parse(line));
+			.filter(Boolean)
+			.map((line) => {
+				try {
+					return JSON.parse(line);
+				} catch {
+					return null;
+				}
+			})
+			.filter(Boolean);
 		return nodesArray;
 	} catch (error) {
 		console.error("getSwarmNodes error:", error);
+		return [];
 	}
 };
 
@@ -627,15 +644,19 @@ export const getNodeInfo = async (nodeId: string, serverId?: string) => {
 			stderr = result.stderr;
 		}
 
-		if (stderr) {
-			console.error(`Error: ${stderr}`);
-			return;
+		if (!stdout || !stdout.trim()) {
+			if (stderr) {
+				console.error(`Error: ${stderr}`);
+			}
+			return null;
 		}
 
 		const nodeInfo = JSON.parse(stdout);
 
 		return nodeInfo;
-	} catch {}
+	} catch {
+		return null;
+	}
 };
 
 export const getNodeApplications = async (serverId?: string) => {
@@ -656,19 +677,26 @@ export const getNodeApplications = async (serverId?: string) => {
 		}
 
 		if (stderr) {
-			console.error(`Error: ${stderr}`);
-			return;
+			console.warn(`[getNodeApplications] stderr: ${stderr}`);
 		}
 
-		if (!stdout.trim()) {
+		if (!stdout || !stdout.trim()) {
 			return [];
 		}
 
 		const appArray = stdout
 			.trim()
 			.split("\n")
-			.map((line) => JSON.parse(line))
-			.filter((service) => !service.Name.startsWith("dokploy-"));
+			.filter(Boolean)
+			.map((line) => {
+				try {
+					return JSON.parse(line);
+				} catch {
+					return null;
+				}
+			})
+			.filter(Boolean)
+			.filter((service: any) => !service.Name?.startsWith("dokploy-"));
 
 		return appArray;
 	} catch (error) {
@@ -700,18 +728,25 @@ export const getApplicationInfo = async (
 		}
 
 		if (stderr) {
-			console.error(`Error: ${stderr}`);
-			return;
+			console.warn(`[getApplicationInfo] stderr: ${stderr}`);
 		}
 
-		if (!stdout.trim()) {
+		if (!stdout || !stdout.trim()) {
 			return [];
 		}
 
 		const appArray = stdout
 			.trim()
 			.split("\n")
-			.map((line) => JSON.parse(line));
+			.filter(Boolean)
+			.map((line) => {
+				try {
+					return JSON.parse(line);
+				} catch {
+					return null;
+				}
+			})
+			.filter(Boolean);
 
 		return appArray;
 	} catch (error) {

@@ -118,6 +118,9 @@ export const fleetRouter = createTRPCRouter({
 				isLocalSwarm ||
 				localInfo?.Swarm?.LocalNodeState === "active" ||
 				localInfo?.Swarm?.LocalNodeState === "locked" ||
+				!!localInfo?.Swarm?.Cluster?.ID ||
+				!!localInfo?.Swarm?.NodeID ||
+				localInfo?.Swarm?.ControlAvailable === true ||
 				!!swarmInspectData?.ID;
 
 			if (isSwarmActive) {
@@ -146,7 +149,9 @@ export const fleetRouter = createTRPCRouter({
 
 			const isManager =
 				isLocalSwarm &&
-				(localInfo?.Swarm?.ControlAvailable ?? (localSwarmNodes.length > 0 || !!swarmInspectData?.ID));
+				(localInfo?.Swarm?.ControlAvailable === true ||
+					localSwarmNodes.some((n) => n.Spec?.Role === "manager" || n.ManagerStatus?.Leader) ||
+					!!swarmInspectData?.ID);
 
 			nodes.push({
 				id: "local-host",
@@ -231,6 +236,9 @@ export const fleetRouter = createTRPCRouter({
 					const isSwarm =
 						remoteInfo?.Swarm?.LocalNodeState === "active" ||
 						remoteInfo?.Swarm?.LocalNodeState === "locked" ||
+						!!remoteInfo?.Swarm?.Cluster?.ID ||
+						!!remoteInfo?.Swarm?.NodeID ||
+						remoteInfo?.Swarm?.ControlAvailable === true ||
 						!!remoteSwarmInspect?.ID;
 
 					const cId = isSwarm
@@ -833,13 +841,21 @@ networks:
 			animated: false,
 		});
 
+		let topologyLocalIp = "217.217.255.128";
+		try {
+			const ipCandidate = await getLocalServerIp();
+			if (ipCandidate && !ipCandidate.includes("unable")) {
+				topologyLocalIp = ipCandidate;
+			}
+		} catch {}
+
 		// Build Server Infrastructure Racks & Workload Allocation
 		const infrastructure = [
 			{
 				id: primaryClusterId,
 				name: "application.softty.net",
-				ip: "217.217.255.120",
-				role: "Primary Cluster / Controller",
+				ip: topologyLocalIp,
+				role: "Docker Swarm Leader / Controller",
 				type: "swarm-manager",
 				status: "online",
 				isLocal: true,

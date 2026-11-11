@@ -9,15 +9,57 @@ env:
   IMAGE_NAME: softtynet/meshdock
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  prepare-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Determine tag
+        id: meta
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF" = "refs/heads/canary" ]; then
+            echo "tag=canary" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=feature" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Auto Bump Version
+        id: bump
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            node scripts/bump-version.mjs --ci
+          else
+            VERSION=$(node -p "require('./apps/dokploy/package.json').version")
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
   docker-amd:
+    needs: [prepare-version]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.ref == 'refs/heads/main' && needs.prepare-version.outputs.version || github.ref }}
           persist-credentials: false
 
       - name: Set up Docker Buildx
@@ -32,14 +74,7 @@ jobs:
       - name: Set tag and version
         id: meta
         run: |
-          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            TAG="latest"
-            VERSION=$(node -p "require('./apps/dokploy/package.json').version")
-          elif [ "$GITHUB_REF" = "refs/heads/canary" ]; then
-            TAG="canary"
-          else
-            TAG="feature"
-          fi
+          TAG="${{ needs.prepare-version.outputs.tag }}"
           echo "tags=${IMAGE_NAME}:${TAG}-amd64" >> "$GITHUB_OUTPUT"
 
       - name: Prepare env file
@@ -54,12 +89,15 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
   docker-arm:
+    needs: [prepare-version]
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.ref == 'refs/heads/main' && needs.prepare-version.outputs.version || github.ref }}
           persist-credentials: false
 
       - name: Set up Docker Buildx
@@ -74,15 +112,7 @@ jobs:
       - name: Set tag and version
         id: meta
         run: |
-          VERSION=$(node -p "require('./apps/dokploy/package.json').version")
-          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            TAG="latest"
-            VERSION=$(node -p "require('./apps/dokploy/package.json').version")
-          elif [ "$GITHUB_REF" = "refs/heads/canary" ]; then
-            TAG="canary"
-          else
-            TAG="feature"
-          fi
+          TAG="${{ needs.prepare-version.outputs.tag }}"
           echo "tags=${IMAGE_NAME}:${TAG}-arm64" >> "$GITHUB_OUTPUT"
 
       - name: Prepare env file
@@ -99,12 +129,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
   combine-manifests:
-    needs: [docker-amd, docker-arm]
+    needs: [prepare-version, docker-amd, docker-arm]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.ref == 'refs/heads/main' && needs.prepare-version.outputs.version || github.ref }}
           persist-credentials: false
 
       - name: Set up Docker Buildx
@@ -118,9 +149,11 @@ jobs:
 
       - name: Create and push manifests
         run: |
+          VERSION="${{ needs.prepare-version.outputs.version }}"
+          TAG="${{ needs.prepare-version.outputs.tag }}"
+
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            VERSION=$(node -p "require('./apps/dokploy/package.json').version")
-            TAG="latest"
+            CLEAN_VERSION="${VERSION#v}"
 
             docker buildx imagetools create -t ${IMAGE_NAME}:${TAG} \
               ${IMAGE_NAME}:${TAG}-amd64 \
@@ -130,45 +163,38 @@ jobs:
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
 
+            docker buildx imagetools create -t ${IMAGE_NAME}:${CLEAN_VERSION} \
+              ${IMAGE_NAME}:${TAG}-amd64 \
+              ${IMAGE_NAME}:${TAG}-arm64
+
           elif [ "$GITHUB_REF" = "refs/heads/canary" ]; then
-            TAG="canary"
             docker buildx imagetools create -t ${IMAGE_NAME}:${TAG} \
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
 
           else
-            TAG="feature"
             docker buildx imagetools create -t ${IMAGE_NAME}:${TAG} \
               ${IMAGE_NAME}:${TAG}-amd64 \
               ${IMAGE_NAME}:${TAG}-arm64
           fi
 
   generate-release:
-    needs: [combine-manifests]
+    needs: [prepare-version, combine-manifests]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-      npm_version: ${{ steps.get_version.outputs.npm_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ needs.prepare-version.outputs.version }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./apps/dokploy/package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "npm_version=${VERSION#v}" >> "$GITHUB_OUTPUT"
-
       - name: Prepare install.sh
         env:
-          RELEASE_VERSION: ${{ steps.get_version.outputs.version }}
+          RELEASE_VERSION: ${{ needs.prepare-version.outputs.version }}
         run: |
           head -1 install.sh | grep -q '^#!' || { echo "install.sh is not a shell script"; exit 1; }
           { head -1 install.sh; echo "DOKPLOY_VERSION=\"\${DOKPLOY_VERSION:-${RELEASE_VERSION}}\""; tail -n +2 install.sh; } > install-pinned.sh
@@ -177,9 +203,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          name: ${{ steps.get_version.outputs.version }}
+          tag_name: ${{ needs.prepare-version.outputs.version }}
+          name: ${{ needs.prepare-version.outputs.version }}
           generate_release_notes: true
           draft: false
           prerelease: false
