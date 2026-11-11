@@ -1126,6 +1126,7 @@ networks:
 
 		const nodes: any[] = [];
 		const edges: any[] = [];
+		const primaryClusterId = "cluster-primary";
 
 		// Central Ingress Router
 		nodes.push({
@@ -1142,6 +1143,18 @@ networks:
 		if (domainsList.length > 0) {
 			for (const d of domainsList) {
 				const domId = `domain-${d.domainId}`;
+				const targetApp = appsList.find((a) => a.applicationId === d.applicationId);
+				const targetCompose = composeList.find((c) => c.composeId === d.composeId);
+				const targetWorkload = targetApp || targetCompose;
+				const targetServerId = targetWorkload?.serverId ? `server-${targetWorkload.serverId}` : primaryClusterId;
+				const targetName = targetApp?.name || targetCompose?.name || "Traefik Gateway";
+
+				const targetAppId = d.applicationId
+					? `app-${d.applicationId}`
+					: d.composeId
+						? `compose-${d.composeId}`
+						: "traefik-ingress";
+
 				nodes.push({
 					id: domId,
 					label: d.host,
@@ -1149,14 +1162,11 @@ networks:
 					tier: "ingress",
 					type: "domain",
 					status: "healthy",
+					targetAppId,
+					targetAppName: targetName,
+					targetServerId,
 					stats: { ports: String(d.port) },
 				});
-
-				const targetAppId = d.applicationId
-					? `app-${d.applicationId}`
-					: d.composeId
-						? `compose-${d.composeId}`
-						: "traefik-ingress";
 
 				edges.push({
 					id: `edge-${domId}-${targetAppId}`,
@@ -1175,6 +1185,9 @@ networks:
 				tier: "ingress",
 				type: "domain",
 				status: "healthy",
+				targetAppId: "traefik-ingress",
+				targetAppName: "Traefik Gateway",
+				targetServerId: primaryClusterId,
 			});
 			edges.push({
 				id: "edge-domain-default-traefik",
@@ -1187,7 +1200,6 @@ networks:
 
 		// Tier 2: Compute Infrastructure
 		// Primary Controller / Swarm Cluster
-		const primaryClusterId = "cluster-primary";
 		nodes.push({
 			id: primaryClusterId,
 			label: "Docker Swarm (Primary Cluster)",
@@ -1240,6 +1252,10 @@ networks:
 				tier: "service",
 				type: "application",
 				status: app.applicationStatus === "done" ? "healthy" : "warning",
+				serverId: parentTarget,
+				domains: domainsList
+					.filter((d) => d.applicationId === app.applicationId)
+					.map((d) => d.host),
 			});
 
 			edges.push({
@@ -1262,6 +1278,10 @@ networks:
 				tier: "service",
 				type: "compose",
 				status: c.composeStatus === "done" ? "healthy" : "warning",
+				serverId: parentTarget,
+				domains: domainsList
+					.filter((d) => d.composeId === c.composeId)
+					.map((d) => d.host),
 			});
 
 			edges.push({
@@ -1294,6 +1314,7 @@ networks:
 					tier: "data",
 					type: "database",
 					status: dbItem.applicationStatus === "done" ? "healthy" : "warning",
+					serverId: parentTarget,
 				});
 
 				// Connect to host server
