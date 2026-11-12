@@ -2,6 +2,7 @@ import { validateRequest } from "@dokploy/server/lib/auth";
 import { createServerSideHelpers } from "@trpc/react-query/server";
 import dynamic from "next/dynamic";
 import {
+	Boxes,
 	Database,
 	Layers,
 	Loader2,
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { appRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
+import useLocale from "@/utils/hooks/use-locale";
 
 const TopologyCanvas = dynamic(
 	() =>
@@ -28,6 +30,7 @@ const TopologyCanvas = dynamic(
 );
 
 const TopologyPage = () => {
+	const { locale, t } = useLocale();
 	const {
 		data: topologyData,
 		isLoading,
@@ -47,11 +50,11 @@ const TopologyPage = () => {
 							<Workflow className="h-4 w-4" />
 						</div>
 						<h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-							System Topology Map
+							{t("System Architecture Map")}
 						</h1>
 					</div>
 					<p className="text-xs sm:text-sm text-muted-foreground mt-1">
-						End-to-end interactive visual architecture map: Ingress, Swarm Clusters, Apps, and Databases.
+						{t("Topology Map Subtitle")}
 					</p>
 				</div>
 
@@ -63,15 +66,15 @@ const TopologyPage = () => {
 							</span>
 							<span className="text-border">|</span>
 							<span className="flex items-center gap-1 text-blue-400 px-1 font-medium">
-								<Layers className="h-3 w-3" /> {topologyData.summary.clustersCount} Clusters
+								<Layers className="h-3 w-3" /> {topologyData.summary.clustersCount} {locale === "vi" ? "Máy chủ" : "Clusters"}
 							</span>
 							<span className="text-border">|</span>
 							<span className="flex items-center gap-1 text-purple-400 px-1 font-medium">
-								<Zap className="h-3 w-3" /> {topologyData.summary.servicesCount} Services
+								<Boxes className="h-3 w-3" /> {(topologyData.summary as any).systemsCount || 6} {locale === "vi" ? "Hệ thống" : "Systems"}
 							</span>
 							<span className="text-border">|</span>
 							<span className="flex items-center gap-1 text-emerald-400 px-1 font-medium">
-								<Database className="h-3 w-3" /> {topologyData.summary.databasesCount} Data
+								<Database className="h-3 w-3" /> {topologyData.summary.databasesCount} {locale === "vi" ? "Dữ liệu" : "Data"}
 							</span>
 						</div>
 					)}
@@ -88,22 +91,27 @@ const TopologyPage = () => {
 								isRefetching ? "animate-spin" : ""
 							}`}
 						/>
-						<span className="hidden sm:inline">Refresh Map</span>
+						<span className="hidden sm:inline">{t("Refresh Map")}</span>
 					</Button>
 				</div>
 			</div>
 
 			{/* Main Canvas View */}
 			{isLoading ? (
-				<div className="flex flex-col items-center justify-center min-h-[500px] border border-border/60 rounded-xl bg-card/20 gap-3 text-muted-foreground">
+				<div className="flex flex-col items-center justify-center min-h-[500px] border border-border/60 rounded-xl bg-card/20 gap-3 text-muted-foreground font-mono">
 					<Loader2 className="h-7 w-7 animate-spin text-emerald-400" />
-					<p className="text-sm">Mapping infrastructure topology & cluster routes...</p>
+					<p className="text-sm">
+						{locale === "vi"
+							? "Đang tải và đồng bộ sơ đồ kiến trúc hệ thống..."
+							: "Mapping infrastructure topology & cluster routes..."}
+					</p>
 				</div>
 			) : (
 				<TopologyCanvas
 					nodes={topologyData?.nodes || []}
 					edges={topologyData?.edges || []}
 					infrastructure={topologyData?.infrastructure || []}
+					systems={topologyData?.systems || []}
 					onRefresh={() => refetch()}
 				/>
 			)}
