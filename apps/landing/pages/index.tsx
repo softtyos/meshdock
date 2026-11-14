@@ -148,13 +148,25 @@ export default function LandingPage() {
 					name="description"
 					content="Hệ thống điều phối tập trung dành cho đội ngũ quản trị hạ tầng Cloud, Docker Swarm và hàng chục VPS độc lập. Trực quan hóa Topology, tự động hóa deploy và đo kiểm thời gian thực."
 				/>
+				<meta property="og:type" content="website" />
+				<meta property="og:site_name" content="Meshdock" />
 				<meta property="og:title" content="Meshdock - Cloud Deployment & Multi-Server Mesh Management" />
 				<meta
 					property="og:description"
 					content="Giải pháp quản lý tập trung và giám sát sơ đồ hệ thống đa server phát triển bởi SOFTTY.NET."
 				/>
-				<meta property="og:image" content="/og.png" />
+				<meta property="og:image" content="https://meshdock.softty.net/og.png" />
+				<meta property="og:image:width" content="1200" />
+				<meta property="og:image:height" content="630" />
+				<meta property="og:image:type" content="image/png" />
 				<meta property="og:url" content="https://meshdock.softty.net" />
+				<meta name="twitter:card" content="summary_large_image" />
+				<meta name="twitter:title" content="Meshdock - Cloud Deployment & Multi-Server Mesh Management" />
+				<meta
+					name="twitter:description"
+					content="Giải pháp quản lý tập trung và giám sát sơ đồ hệ thống đa server phát triển bởi SOFTTY.NET."
+				/>
+				<meta name="twitter:image" content="https://meshdock.softty.net/og.png" />
 				<link rel="icon" href="/icon.svg" />
 			</Head>
 
