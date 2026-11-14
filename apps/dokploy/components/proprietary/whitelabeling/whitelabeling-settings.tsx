@@ -86,7 +86,7 @@ const formSchema = z
 type FormSchema = z.infer<typeof formSchema>;
 
 const DEFAULT_CSS_TEMPLATE = `/* ============================================
-   Dokploy Default Theme - CSS Variables
+   Meshdock Default Theme - CSS Variables
    Modify these values to customize your instance.
 
    Theme colors use the oklch() color format
@@ -346,10 +346,10 @@ export function WhitelabelingSettings() {
 									<FormItem>
 										<FormLabel>Application Name</FormLabel>
 										<FormControl>
-											<Input placeholder="Dokploy" {...field} />
+											<Input placeholder="Meshdock" {...field} />
 										</FormControl>
 										<FormDescription>
-											Replaces "Dokploy" across the entire interface.
+											Replaces &quot;Meshdock&quot; across the entire interface.
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
@@ -364,13 +364,13 @@ export function WhitelabelingSettings() {
 										<FormLabel>Application Description</FormLabel>
 										<FormControl>
 											<Input
-												placeholder="The Open Source alternative to Netlify, Vercel, Heroku."
+												placeholder="Centralized Cloud Deployment & Multi-Server Mesh Management Platform."
 												{...field}
 											/>
 										</FormControl>
 										<FormDescription>
 											Tagline shown on the login/onboarding pages. Defaults to
-											the standard Dokploy description if empty.
+											the standard Meshdock description if empty.
 										</FormDescription>
 										<FormMessage />
 									</FormItem>

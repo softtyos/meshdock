@@ -148,26 +148,85 @@ export default function LandingPage() {
 					name="description"
 					content="Hệ thống điều phối tập trung dành cho đội ngũ quản trị hạ tầng Cloud, Docker Swarm và hàng chục VPS độc lập. Trực quan hóa Topology, tự động hóa deploy và đo kiểm thời gian thực."
 				/>
+				<meta name="keywords" content="Meshdock, Docker Swarm, PaaS, Cloud Management, Multi-Server, DevOps, SOFTTY.NET, VPS Deployment, Server Topology, Hạ tầng Cloud" />
+				<meta name="author" content="SOFTTY.NET CO., LTD" />
+				<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+				<link rel="canonical" href="https://meshdock.softty.net" />
+				<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+				<link rel="apple-touch-icon" href="/icon.svg" />
+
+				{/* Open Graph Meta Tags */}
 				<meta property="og:type" content="website" />
 				<meta property="og:site_name" content="Meshdock" />
-				<meta property="og:title" content="Meshdock - Cloud Deployment & Multi-Server Mesh Management" />
+				<meta property="og:locale" content="vi_VN" />
+				<meta property="og:locale:alternate" content="en_US" />
+				<meta property="og:title" content="Meshdock - Nền tảng Quản trị &amp; Triển khai Mạng lưới Server Tập trung | SOFTTY.NET" />
 				<meta
 					property="og:description"
 					content="Giải pháp quản lý tập trung và giám sát sơ đồ hệ thống đa server phát triển bởi SOFTTY.NET."
 				/>
+				<meta property="og:url" content="https://meshdock.softty.net" />
 				<meta property="og:image" content="https://meshdock.softty.net/og.png" />
+				<meta property="og:image:secure_url" content="https://meshdock.softty.net/og.png" />
 				<meta property="og:image:width" content="1200" />
 				<meta property="og:image:height" content="630" />
 				<meta property="og:image:type" content="image/png" />
-				<meta property="og:url" content="https://meshdock.softty.net" />
+				<meta property="og:image:alt" content="Meshdock - Cloud Deployment &amp; Multi-Server Mesh Management" />
+
+				{/* Twitter Card Meta Tags */}
 				<meta name="twitter:card" content="summary_large_image" />
-				<meta name="twitter:title" content="Meshdock - Cloud Deployment & Multi-Server Mesh Management" />
+				<meta name="twitter:site" content="@softtynet" />
+				<meta name="twitter:creator" content="@softtynet" />
+				<meta name="twitter:title" content="Meshdock - Cloud Deployment &amp; Multi-Server Mesh Management" />
 				<meta
 					name="twitter:description"
 					content="Giải pháp quản lý tập trung và giám sát sơ đồ hệ thống đa server phát triển bởi SOFTTY.NET."
 				/>
 				<meta name="twitter:image" content="https://meshdock.softty.net/og.png" />
-				<link rel="icon" href="/icon.svg" />
+
+				{/* JSON-LD Structured Data for Rich Search Results */}
+				<script
+					type="application/ld+json"
+					dangerouslySetInnerHTML={{
+						__html: JSON.stringify({
+							"@context": "https://schema.org",
+							"@graph": [
+								{
+									"@type": "SoftwareApplication",
+									"name": "Meshdock",
+									"applicationCategory": "DeveloperApplication",
+									"operatingSystem": "Linux, Cloud, Docker Swarm",
+									"description": "Nền tảng Quản trị & Triển khai Mạng lưới Server Tập trung phát triển bởi SOFTTY.NET.",
+									"url": "https://meshdock.softty.net",
+									"image": "https://meshdock.softty.net/og.png",
+									"offers": {
+										"@type": "Offer",
+										"price": "0",
+										"priceCurrency": "USD"
+									},
+									"author": {
+										"@type": "Organization",
+										"name": "SOFTTY.NET CO., LTD",
+										"url": "https://www.softty.net"
+									}
+								},
+								{
+									"@type": "WebSite",
+									"name": "Meshdock",
+									"url": "https://meshdock.softty.net",
+									"publisher": {
+										"@type": "Organization",
+										"name": "SOFTTY.NET",
+										"logo": {
+											"@type": "ImageObject",
+											"url": "https://meshdock.softty.net/icon.svg"
+										}
+									}
+								}
+							]
+						}),
+					}}
+				/>
 			</Head>
 
 			{/* Background ambient lighting */}
